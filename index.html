@@ -1,0 +1,1942 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{margin:0}body{font:14px system-ui,sans-serif}</style>
+<title>Wohnungsplan mit Budget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: the 3D flat fills the screen; smoked-glass panels float at the edges; a shopping-list drawer slides in from the right (bottom sheet on phones). */
+:root{
+  --bg:#110f0d;
+  --panel:rgba(24,20,17,.84);
+  --panel-solid:#1a1714;
+  --fg:#f3ece2;
+  --muted:#ac9f90;
+  --accent:#e3aa63;
+  --ok:#8fbf8a;
+  --line:rgba(243,236,226,.14);
+  --display:'Sora',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --body:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:none}
+#c.dragging{cursor:grabbing}
+#ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;gap:12px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.glass{background:var(--panel);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.card{pointer-events:auto;border-radius:14px;padding:13px 16px 14px;max-width:350px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.card h1{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.meta{margin:0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.budget{display:flex;flex-direction:column;gap:5px}
+.bar{height:6px;border-radius:99px;background:rgba(243,236,226,.12);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#f0c48a);border-radius:99px}
+.budget-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.budget-row b{color:var(--fg);font-weight:600}
+.room{border-top:1px solid var(--line);padding-top:9px;display:flex;flex-direction:column;gap:4px}
+.room-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.room-name{font-family:var(--display);font-weight:600;font-size:14.5px}
+.room-dims{font-size:12.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+.room-items{font-size:12.5px;line-height:1.45;color:var(--muted);margin:0}
+.btn{font:500 12.5px var(--body);color:var(--bg);background:var(--accent);border:0;border-radius:999px;padding:7px 13px;cursor:pointer;align-self:flex-start}
+#map{pointer-events:auto;border-radius:12px;width:176px;height:154px;flex:none;cursor:pointer}
+.bottom{display:flex;flex-direction:column;gap:10px;align-items:center}
+.hint{font-size:12.5px;color:var(--fg);border-radius:999px;padding:7px 14px;transition:opacity .5s;text-align:center}
+.hint.off{opacity:0}
+.rooms{pointer-events:auto;display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px;scrollbar-width:none}
+.rooms::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:8px;font:500 13.5px var(--body);color:var(--fg);border-radius:999px;padding:9px 14px;cursor:pointer}
+.chip .sw{width:9px;height:9px;border-radius:50%}
+.chip small{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:rgba(227,170,99,.2);border-color:var(--accent)}
+.toggles{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.seg{display:inline-flex;border-radius:999px;padding:3px;gap:2px}
+.seg button{font:500 13px var(--body);color:var(--muted);background:transparent;border:0;border-radius:999px;padding:7px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+#listBtn{font:600 13px var(--body);color:var(--bg);background:var(--accent);border:0;border-radius:999px;padding:9px 16px;cursor:pointer;font-variant-numeric:tabular-nums}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#labels{position:fixed;inset:0;pointer-events:none}
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border-radius:10px;padding:5px 10px;font-size:12px;white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+.lbl b{font-family:var(--display);font-weight:600;font-size:12.5px}
+.lbl span{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+/* product popup */
+#pop{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);transform:translateX(-50%);width:min(360px,calc(100vw - 32px));border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;pointer-events:auto;z-index:5}
+#pop .shop{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+#pop h2{font:600 15px var(--display);margin:0}
+#pop .var{font-size:12.5px;color:var(--muted);margin:0}
+#pop .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px}
+#pop .price{font:600 16px var(--body);font-variant-numeric:tabular-nums}
+#pop a{color:var(--bg);background:var(--fg);text-decoration:none;font:500 12.5px var(--body);padding:7px 12px;border-radius:999px}
+#pop .x{position:absolute;top:8px;right:8px;background:transparent;border:0;color:var(--muted);font-size:18px;cursor:pointer;width:30px;height:30px;border-radius:50%}
+/* shopping drawer */
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,100vw);z-index:8;display:flex;flex-direction:column;border-radius:0;border-width:0 0 0 1px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 16px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+  padding-right:max(16px,env(safe-area-inset-right,0px));padding-left:18px;background:var(--panel-solid)}
+#drawer header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+#drawer h2{font:600 18px var(--display);margin:0 0 4px}
+#drawer .close{background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:6px 12px;font:500 12.5px var(--body);cursor:pointer}
+#drawer .scroll{overflow-y:auto;flex:1;min-height:0;padding:6px 2px 10px}
+.grp{padding:12px 0 6px;border-bottom:1px solid var(--line)}
+.grp h3{display:flex;justify-content:space-between;align-items:baseline;font:600 14px var(--display);margin:0 0 8px}
+.grp h3 span{font:500 12.5px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.it{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 0;font-size:13px}
+.it .n{min-width:0}
+.it .n b{font-weight:500}
+.it .n small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.it .p{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.it .p small{display:block;color:var(--muted);font-size:11px}
+.it a{grid-column:1/-1;justify-self:start;font-size:11.5px;color:var(--accent);text-decoration:none}
+.tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
+.tag.ikea{background:rgba(227,170,99,.18);color:var(--accent)}
+.tag.mm{background:rgba(220,90,80,.18);color:#f08f86}
+.tag.saturn{background:rgba(240,150,60,.18);color:#f5b26b}
+.tag.poco{background:rgba(120,170,230,.18);color:#9cc3f0}
+.tag.otto{background:rgba(230,110,110,.18);color:#f29b9b}
+.tag.kabs{background:rgba(143,191,138,.18);color:var(--ok)}
+.sum{padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-variant-numeric:tabular-nums}
+.sum div{display:flex;justify-content:space-between}
+.sum .tot{font:600 17px var(--body)}
+.sum .rest{color:var(--ok)}
+.note{font-size:11.5px;color:var(--muted);line-height:1.45;margin:8px 0 0}
+#fade{position:fixed;inset:0;background:#0b0908;opacity:0;pointer-events:none;transition:opacity .22s ease;z-index:6}
+#loading{position:fixed;inset:0;display:grid;place-items:center;font:500 14px var(--body);color:var(--muted)}
+@media (max-width:560px){
+  #shopsTop,.room-items{display:none}
+  .seg button{padding:6px 10px;font-size:12px}
+  #listBtn{padding:7px 12px;font-size:12px}
+  .toggles{gap:6px}
+  .hint{font-size:11.5px;padding:6px 12px}
+  .card{max-width:none;flex:1;padding:11px 13px}
+  .card h1{font-size:15px}
+  .room-items{font-size:12px}
+  #map{width:110px;height:96px}
+  .chip{padding:8px 12px;font-size:13px}
+  #drawer{top:auto;height:82vh;width:100vw;border-width:1px 0 0;border-radius:16px 16px 0 0;padding-left:max(16px,env(safe-area-inset-left,0px))}
+  #pop{bottom:calc(env(safe-area-inset-bottom,0px) + 170px)}
+}
+@media (prefers-reduced-motion:reduce){#fade,.hint{transition:none}}
+</style>
+
+<canvas id="c" tabindex="0" aria-label="3D-Ansicht der Wohnung mit IKEA- und MediaMarkt-Möbeln"></canvas>
+<div id="loading">Wohnung wird aufgebaut …</div>
+<div id="labels"></div>
+<div id="ui">
+  <div class="top">
+    <section class="card glass" aria-live="polite">
+      <div>
+        <h1 id="h1">Unsere Wohnung unter 5.000 €</h1>
+        <p class="meta" id="shopsTop">Preise vom 26.11.2026</p>
+      </div>
+      <div class="budget">
+        <div class="bar"><i id="barFill" style="width:98%"></i></div>
+        <div class="budget-row"><span><b id="sumTop">…</b> von <span id="maxTop">5.000 €</span></span><span id="restTop"></span></div>
+      </div>
+      <div class="room">
+        <div class="room-head"><span class="room-name" id="rName">Wohnzimmer</span><span class="room-dims" id="rDims"></span></div>
+        <p class="room-items" id="rItems"></p>
+        <button class="btn" id="enter" hidden>Rundgang hier starten</button>
+      </div>
+    </section>
+    <canvas id="map" class="glass" aria-label="Grundriss – antippen, um dorthin zu gehen"></canvas>
+  </div>
+  <div class="bottom">
+    <div class="hint glass" id="hint">Ziehen zum Umschauen · Boden antippen zum Hinlaufen · Möbel antippen für Preis &amp; Link</div>
+    <nav class="rooms" id="rooms" aria-label="Räume"></nav>
+    <div class="toggles">
+      <div class="seg glass" role="group" aria-label="Ansicht">
+        <button id="mWalk" aria-pressed="true">Rundgang</button>
+        <button id="mTop" aria-pressed="false">Von oben</button>
+      </div>
+      <div class="seg glass" role="group" aria-label="Licht">
+        <button id="lEve" aria-pressed="true">Abend</button>
+        <button id="lDay" aria-pressed="false">Tag</button>
+      </div>
+      <div class="seg glass" role="group" aria-label="Budget">
+        <button id="b5" aria-pressed="true">5.000 €</button>
+        <button id="b9" aria-pressed="false">9.000 €</button>
+      </div>
+      <button id="listBtn">Einkaufsliste</button>
+    </div>
+  </div>
+</div>
+<section id="pop" class="glass" hidden aria-live="polite">
+  <button class="x" id="popX" aria-label="Schließen">×</button>
+  <span class="shop" id="pShop"></span>
+  <h2 id="pName"></h2>
+  <p class="var" id="pVar"></p>
+  <div class="row"><span class="price" id="pPrice"></span><a id="pLink" href="#" target="_blank" rel="noopener">Im Shop ansehen ↗</a></div>
+</section>
+<aside id="drawer" class="glass" hidden aria-label="Einkaufsliste">
+  <header>
+    <div><h2>Einkaufsliste</h2><p class="meta" id="dMeta"></p></div>
+    <button class="close" id="dClose">Schließen</button>
+  </header>
+  <div class="scroll" id="dList"></div>
+</aside>
+<div id="fade"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {GTAOPass} from 'three/addons/postprocessing/GTAOPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
+
+const H=2.45, T=0.05, TO=0.3, EYE=1.6;
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LOW=matchMedia('(pointer:coarse)').matches||Math.min(innerWidth,innerHeight)<600;
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,LOW?1.5:1.75));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.0;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
+RectAreaLightUniformsLib.init();
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(70,1,0.05,120);
+camera.rotation.order='YXZ';
+let TG=scene; // current parent for helpers
+
+/* ---------------- procedural textures ---------------- */
+let _s=20261126; const rnd=()=>{_s=(_s*16807)%2147483647;return (_s-1)/2147483646;};
+const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
+function tex(c,meters,color=true){const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  if(meters){const m=Array.isArray(meters)?meters:[meters,meters];t.repeat.set(1/m[0],1/m[1]);}
+  if(color)t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;}
+function floorCanvases(){const S=1024,c=mk(S,S),g=c.getContext('2d'),b=mk(S,S),gb=b.getContext('2d');
+  g.fillStyle='#a89a88';g.fillRect(0,0,S,S);gb.fillStyle='#808080';gb.fillRect(0,0,S,S);const rows=10,rh=S/rows;
+  for(let r=0;r<rows;r++){let x=-rnd()*S*.6;const y=r*rh;
+    while(x<S){const len=S*(.5+rnd()*.25),l=140+rnd()*26,col=`rgb(${l+12|0},${l+3|0},${l-9|0})`;
+      for(const o of [0,-S]){const px=x+o;if(px+len<0||px>S)continue;
+        g.save();g.beginPath();g.rect(px,y,len,rh);g.clip();g.fillStyle=col;g.fillRect(px,y,len,rh);
+        for(let i=0;i<36;i++){const yy=y+rnd()*rh;g.strokeStyle=rnd()<.55?`rgba(80,66,54,${.05+rnd()*.1})`:`rgba(242,232,216,${.04+rnd()*.07})`;
+          g.lineWidth=.6+rnd()*1.8;g.beginPath();g.moveTo(px,yy);g.bezierCurveTo(px+len*.3,yy+(rnd()-.5)*7,px+len*.65,yy+(rnd()-.5)*7,px+len,yy+(rnd()-.5)*4);g.stroke();}
+        g.fillStyle='rgba(58,48,40,.45)';g.fillRect(px,y,2,rh);g.fillRect(px,y,len,1.5);g.restore();
+        gb.fillStyle='#3a3a3a';gb.fillRect(px,y,3,rh);gb.fillRect(px,y,len,3);}
+      x+=len;}}
+  return [c,b];}
+function walnutCanvas(base='#5d3e2a'){const S=512,c=mk(S,S),g=c.getContext('2d');g.fillStyle=base;g.fillRect(0,0,S,S);
+  for(let i=0;i<300;i++){const x=rnd()*S,a=.06+rnd()*.15;g.strokeStyle=rnd()<.55?`rgba(30,18,10,${a})`:`rgba(156,110,72,${a})`;
+    g.lineWidth=1+rnd()*3;g.beginPath();g.moveTo(x,0);const k=(rnd()-.5)*22;g.bezierCurveTo(x+k,S*.33,x-k,S*.66,x,S);g.stroke();}
+  return c;}
+function noiseCanvas(S,base,amp,weave){const c=mk(S,S),g=c.getContext('2d'),id=g.createImageData(S,S);
+  for(let i=0;i<S*S;i++){let v=base+(rnd()-.5)*amp;if(weave){const x=i%S,y=(i/S)|0;v+=(((x>>1)+(y>>1))%2?5:-5)*weave;}
+    v=Math.max(0,Math.min(255,v));id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255;}
+  g.putImageData(id,0,0);return c;}
+function tileCanvases(n,base,grout,yellow){const S=512,c=mk(S,S),g=c.getContext('2d'),b=mk(S,S),gb=b.getContext('2d');
+  g.fillStyle=grout;g.fillRect(0,0,S,S);gb.fillStyle='#303030';gb.fillRect(0,0,S,S);const t=S/n;
+  for(let r=0;r<n;r++)for(let q=0;q<n;q++){let col=base;if(yellow&&((q+r)%7===0||(q-r+n)%7===0))col=yellow;
+    const l=(rnd()-.5)*8;const cc=new THREE.Color(col);g.fillStyle=`rgb(${cc.r*255+l|0},${cc.g*255+l|0},${cc.b*255+l|0})`;g.fillRect(q*t+2,r*t+2,t-4,t-4);
+    g.fillStyle='rgba(255,255,255,.08)';g.fillRect(q*t+3,r*t+3,t*.5,t-6);
+    gb.fillStyle='#d0d0d0';gb.fillRect(q*t+2,r*t+2,t-4,t-4);}
+  return [c,b];}
+function radCanvas(){const c=mk(64,64),g=c.getContext('2d'),gr=g.createLinearGradient(0,0,64,0);
+  gr.addColorStop(0,'#b9b5ae');gr.addColorStop(.25,'#f3f1ec');gr.addColorStop(.7,'#e7e4de');gr.addColorStop(1,'#9f9b94');g.fillStyle=gr;g.fillRect(0,0,64,64);return c;}
+function artCanvas(seed){const c=mk(256,360),g=c.getContext('2d');g.fillStyle=seed?'#d9cbb6':'#e8e0d2';g.fillRect(0,0,256,360);
+  for(let i=0;i<7;i++){g.fillStyle=`rgba(${seed?'120,92,66':'60,52,46'},${.12+i*.03})`;g.beginPath();g.ellipse(128+(rnd()-.5)*60,90+i*34,70-i*6,22,rnd()*.4,0,7);g.fill();}
+  g.fillStyle='rgba(40,34,30,.85)';g.beginPath();g.arc(seed?90:170,seed?250:120,seed?34:26,0,7);g.fill();return c;}
+function skyCanvas(day){const c=mk(256,256),g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,256);
+  if(day){gr.addColorStop(0,'#8fb8de');gr.addColorStop(.65,'#d8e6ef');gr.addColorStop(1,'#eef1ef');}
+  else{gr.addColorStop(0,'#111b33');gr.addColorStop(.55,'#2a4675');gr.addColorStop(1,'#6f7590');}
+  g.fillStyle=gr;g.fillRect(0,0,256,256);g.fillStyle=day?'#6c7d5c':'#0d1315';g.beginPath();g.moveTo(0,256);
+  for(let x=0;x<=256;x+=6)g.lineTo(x,178+Math.sin(x*.06)*13+rnd()*16);g.lineTo(256,256);g.fill();
+  if(!day){g.fillStyle='rgba(255,236,205,.9)';g.beginPath();g.arc(186,150,3.5,0,7);g.fill();for(let i=0;i<5;i++){g.fillStyle='rgba(255,200,130,.8)';g.fillRect(30+i*45,205+rnd()*20,3,3);}}
+  return c;}
+function glowRCanvas(){const c=mk(128,128),g=c.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.3,'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);return c;}
+function glowLCanvas(){const c=mk(128,256),g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.22,'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,256);
+  g.globalCompositeOperation='destination-in';const h=g.createLinearGradient(0,0,128,0);
+  h.addColorStop(0,'rgba(0,0,0,0)');h.addColorStop(.14,'rgba(0,0,0,1)');h.addColorStop(.86,'rgba(0,0,0,1)');h.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=h;g.fillRect(0,0,128,256);return c;}
+const [fc,fb]=floorCanvases(), [twc,twb]=tileCanvases(8,'#f4f3ef','#d9d6cf'), [tfc,tfb]=tileCanvases(6,'#efede8','#c9c5bd','#e8c23a');
+const TX={floor:tex(fc,2),floorB:tex(fb,2,false),walnut:tex(walnutCanvas(),1),walnutD:tex(walnutCanvas('#3c281c'),1),
+  fabric:tex(noiseCanvas(256,226,40,1),.25),fabricB:tex(noiseCanvas(256,128,90,1),.25,false),rug:tex(noiseCanvas(256,205,95,0),.6),rugB:tex(noiseCanvas(256,128,120,0),.6,false),
+  tileW:tex(twc,1.2),tileWB:tex(twb,1.2,false),tileF:tex(tfc,1.2),tileFB:tex(tfb,1.2,false),rad:tex(radCanvas(),[.05,1]),
+  art1:tex(artCanvas(0)),art2:tex(artCanvas(1)),skyE:tex(skyCanvas(false)),skyD:tex(skyCanvas(true)),gR:tex(glowRCanvas(),0,false),gL:tex(glowLCanvas(),0,false),
+  paint:tex(noiseCanvas(256,128,26,0),.5,false)};
+for(const k of ['gR','gL'])TX[k].wrapS=TX[k].wrapT=THREE.ClampToEdgeWrapping;
+
+/* ---------------- materials ---------------- */
+const DS=THREE.DoubleSide;
+function std(color,o={}){const m=new THREE.MeshStandardMaterial({color,roughness:o.r??.8,metalness:o.m??0,map:o.map||null});
+  if(o.bump){m.bumpMap=o.bump;m.bumpScale=o.bs??1;} if(o.e){m.emissive=new THREE.Color(o.e);m.emissiveIntensity=o.ei??1;}
+  if(o.side)m.side=o.side; if(o.t!=null){m.transparent=true;m.opacity=o.t;} return m;}
+function fab(color,o={}){return new THREE.MeshPhysicalMaterial({color,map:TX.fabric,bumpMap:TX.fabricB,bumpScale:o.bs??1.2,roughness:.95,sheen:1,sheenRoughness:.75,sheenColor:new THREE.Color(o.sheen||'#a89f96'),side:o.side||THREE.FrontSide});}
+const M={
+  wall:std('#ebe6df',{r:.93,bump:TX.paint,bs:.25}), ceil:std('#f1ede7',{r:1}), slope:std('#ede8e0',{r:1,side:DS,bump:TX.paint,bs:.35}),
+  floor:std('#ffffff',{map:TX.floor,bump:TX.floorB,bs:.6,r:.5}), tileW:std('#ffffff',{map:TX.tileW,bump:TX.tileWB,bs:.8,r:.22}), tileF:std('#ffffff',{map:TX.tileF,bump:TX.tileFB,bs:.8,r:.35}),
+  green:std('#26393a',{r:.93,bump:TX.paint,bs:.25}),
+  walnut:std('#ffffff',{map:TX.walnut,r:.5}), walnutD:std('#ffffff',{map:TX.walnutD,r:.48}), oakD:std('#9a8678',{map:TX.walnut,r:.5}), oak:std('#d8c3a6',{map:TX.walnut,r:.55}),
+  blackbrown:std('#262120',{r:.55}), black:std('#1b1a19',{r:.55}), anth:std('#34373a',{r:.5}),
+  frame:std('#f3f1ec',{r:.35}), sill:std('#e9e5de',{r:.25}), rad:std('#ffffff',{map:TX.rad,r:.35}), door:std('#f4f2ee',{r:.4}),
+  sofa:fab('#4a4a4b',{sheen:'#8a8a8c'}), bedF:fab('#55575a'), linen:fab('#f1eee8',{bs:.5}), cream:fab('#ddd2c1'), brown:fab('#6d4d38'), greige:fab('#a99c8b'),
+  chairF:fab('#4c4d50',{side:DS}), knisa:fab('#3f4144'), vissle:fab('#2f3134'), beige:fab('#c9b79c'), curtain:fab('#a3a4a5',{side:DS}),
+  rug:std('#e4dccd',{map:TX.rug,bump:TX.rugB,bs:1.5,r:1}), rugB:std('#cbbca3',{map:TX.rug,bump:TX.rugB,bs:1.5,r:1}), jute:std('#b8986c',{map:TX.rug,bump:TX.rugB,bs:2,r:1}), mat:std('#c9c7c3',{map:TX.rug,bump:TX.rugB,bs:1.5,r:1}),
+  ceramic:new THREE.MeshPhysicalMaterial({color:'#f8f7f4',roughness:.25,clearcoat:1,clearcoatRoughness:.1}),
+  metal:std('#1c1c1c',{r:.35,m:.8}), chrome:std('#e5e5e5',{r:.12,m:1}), brass:std('#c9a160',{r:.28,m:1}),
+  screen:new THREE.MeshPhysicalMaterial({color:'#060708',roughness:.08,metalness:.2,clearcoat:1,clearcoatRoughness:.03}),
+  mirror:std('#c9cfd1',{r:.03,m:.95}), glassG:std('#5b5650',{r:.05,m:.2,t:.45}), glassC:std('#d6e4e8',{r:.05,m:.1,t:.18}),
+  white:std('#f5f4f1',{r:.3}), whiteM:std('#f0efeb',{r:.55}), candle:std('#efe6d8',{r:.8}),
+  leaf:std('#47683a',{r:.6,side:DS}), leafD:std('#30492b',{r:.65,side:DS}), olive:std('#5a6a46',{r:.75}), pot:std('#2e2825',{r:.6}), potW:std('#dcd6cc',{r:.6}), trunk:std('#5a4636',{r:.9}),
+  art1:std('#ffffff',{map:TX.art1,r:.9}), art2:std('#ffffff',{map:TX.art2,r:.9}),
+  paper:std('#f7efe2',{r:1,e:'#ffcf8f',ei:.6}), shadeW:std('#f2eee6',{r:.95,side:DS,e:'#ffcf8f',ei:.25}),
+  led:new THREE.MeshBasicMaterial({color:new THREE.Color(5,3.4,1.9)}), bulb:new THREE.MeshBasicMaterial({color:new THREE.Color(4,3.1,2.1)}), flame:new THREE.MeshBasicMaterial({color:new THREE.Color(4,2.8,1.2)}),
+  slat:std('#ffffff',{map:TX.walnut,r:.55}), felt:std('#191614',{r:1}),
+  sky:new THREE.MeshBasicMaterial({map:TX.skyE,side:DS,toneMapped:false}), shadowM:new THREE.MeshBasicMaterial({color:'#000000',map:TX.gR,transparent:true,opacity:.3,depthWrite:false})
+};
+
+/* ---------------- environment ---------------- */
+const pmrem=new THREE.PMREMGenerator(renderer);
+const envTex=pmrem.fromScene(new RoomEnvironment(),.04).texture;
+scene.environment=envTex;
+
+/* ---------------- geometry helpers ---------------- */
+function worldUV(geo,w,h,d){const uv=geo.attributes.uv;const dims=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
+  for(let f=0;f<6;f++)for(let i=0;i<4;i++){const k=f*4+i;uv.setXY(k,uv.getX(k)*dims[f][0],uv.getY(k)*dims[f][1]);}uv.needsUpdate=true;return geo;}
+function bb(x0,x1,y0,y1,z0,z1,m,parent=TG){const a=Math.min(x0,x1),b=Math.max(x0,x1),c=Math.min(y0,y1),d=Math.max(y0,y1),e=Math.min(z0,z1),f=Math.max(z0,z1);
+  const w=Math.max(b-a,1e-4),h=Math.max(d-c,1e-4),dd=Math.max(f-e,1e-4);
+  const me=new THREE.Mesh(worldUV(new THREE.BoxGeometry(w,h,dd),w,h,dd),m);me.position.set((a+b)/2,(c+d)/2,(e+f)/2);parent.add(me);return me;}
+function rrShape(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;r=Math.max(Math.min(r,w/2-1e-4,h/2-1e-4),1e-4);
+  s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s;}
+function rbb(x0,x1,y0,y1,z0,z1,r,m,parent=TG){const w=Math.abs(x1-x0),h=Math.abs(y1-y0),d=Math.abs(z1-z0);
+  const b=Math.max(Math.min(r*.6,d/2-.003,w/2-.003,h/2-.003),.002);
+  const geo=new THREE.ExtrudeGeometry(rrShape(w-2*b,h-2*b,r-b),{depth:Math.max(d-2*b,.001),bevelEnabled:true,bevelThickness:b,bevelSize:b,bevelSegments:4,curveSegments:8});
+  geo.center();const me=new THREE.Mesh(geo,m);me.position.set((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);parent.add(me);return me;}
+function cyl(rt,rb,h,m,x,y0,z,parent=TG,seg=32){const me=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m);me.position.set(x,y0+h/2,z);parent.add(me);return me;}
+function sph(r,m,x,y,z,parent=TG,sx=1,sy=1,sz=1){const me=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),m);me.position.set(x,y,z);me.scale.set(sx,sy,sz);parent.add(me);return me;}
+const V=(x,y,z)=>new THREE.Vector3(x,y,z), UP=V(0,1,0);
+function rod(a,b,r,m,parent=TG,seg=10){const d=new THREE.Vector3().subVectors(b,a),L=d.length();const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,seg),m);
+  me.position.copy(a).addScaledVector(d,.5);me.quaternion.setFromUnitVectors(UP,d.normalize());parent.add(me);return me;}
+function poly(pts,m,parent){const g=new THREE.BufferGeometry();const v=[];for(let i=1;i<pts.length-1;i++)v.push(...pts[0],...pts[i],...pts[i+1]);
+  g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.computeVertexNormals();const me=new THREE.Mesh(g,m);parent.add(me);return me;}
+function floorPlane(x0,x1,z0,z1,m,y=0,parent=scene){const w=x1-x0,d=z1-z0;const g=new THREE.PlaneGeometry(w,d);
+  const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w+x0,uv.getY(i)*d-z1);uv.needsUpdate=true;
+  g.rotateX(-Math.PI/2);const me=new THREE.Mesh(g,m);me.position.set((x0+x1)/2,y,(z0+z1)/2);parent.add(me);me.userData.floor=true;return me;}
+function ceilPlane(x0,x1,z0,z1,y,parent){const g=new THREE.PlaneGeometry(x1-x0,z1-z0);g.rotateX(Math.PI/2);const me=new THREE.Mesh(g,M.ceil);me.position.set((x0+x1)/2,y,(z0+z1)/2);parent.add(me);return me;}
+const noPick=()=>{};
+const glows=[];
+function glow(kind,w,h,color,op,x,y,z,floor,yaw){const g=new THREE.PlaneGeometry(w,h);if(floor)g.rotateX(Math.PI/2);if(yaw)g.rotateY(yaw);
+  const m=new THREE.MeshBasicMaterial({color,map:kind==='r'?TX.gR:TX.gL,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,side:DS});
+  const me=new THREE.Mesh(g,m);me.position.set(x,y,z);me.renderOrder=3;me.raycast=noPick;me.userData.fx=true;scene.add(me);glows.push({m,base:op});if(CUR)reg(CUR,me);return me;}
+function contact(x,z,w,d,op=.3){const g=new THREE.PlaneGeometry(w,d);g.rotateX(-Math.PI/2);const m=M.shadowM.clone();m.opacity=op;
+  const me=new THREE.Mesh(g,m);me.position.set(x,.003,z);me.renderOrder=1;me.raycast=noPick;me.userData.fx=true;scene.add(me);if(CUR)reg(CUR,me);}
+// every product registers its objects so a budget plan can show or hide it
+const REG={};let CUR=null;const reg=(pid,o)=>{(REG[pid]=REG[pid]||[]).push(o);};
+function prod(id,fn){const g=new THREE.Group();g.userData.pid=id;scene.add(g);reg(id,g);const prev=TG,pc=CUR;TG=g;CUR=id;fn(g);TG=prev;CUR=pc;return g;}
+
+/* ---------------- floor plan (meters; x east, z south) ---------------- */
+const ROOMS={
+  wohn:{key:'wohnzimmer',name:'Wohnzimmer',color:'#e3aa63',x0:5.55,x1:10.05,z0:-0.97,z1:2.13,area:'14,7',dims:'3,10 × 5,00 m',
+    slope:{side:'n',k:1.0,r:1.3},outer:['n','s','e'],view:{x:5.95,z:1.7,lx:9.9,lz:-0.15},top:{r:7.5}},
+  schlaf:{key:'schlafzimmer',name:'Schlafzimmer',color:'#a4b3c9',x0:2.2,x1:5.45,z0:-3.75,z1:-0.1,area:'11,9',dims:'3,65 × 3,25 m',
+    slope:{side:'n',k:1.0,r:1.45},outer:['n'],windows:[{side:'n',c:3.7,w:1.3,sill:.88,h:1.12,sashes:2,blind:.3}],
+    view:{x:2.55,z:-1.15,lx:5.3,lz:-2.45},top:{r:6.5}},
+  arbeit:{key:'arbeitszimmer',name:'Arbeitszimmer',color:'#82ab9d',x0:2.5,x1:5.0,z0:1.27,z1:5.52,area:'10,6',dims:'4,25 × 2,50 m',
+    slope:{side:'e',k:1.0,r:.9},outer:['s','e'],windows:[{side:'s',c:3.45,w:1.85,sill:.85,h:1.05,sashes:3}],sideMat:{e:'green'},
+    view:{x:4.45,z:1.75,lx:3.1,lz:5.2},top:{r:6.5}},
+  bad:{key:'bad',name:'Bad',color:'#d9c4a6',x0:0,x1:2.1,z0:-2.7,z1:-0.1,area:'5,5',dims:'2,60 × 2,10 m',
+    slope:{side:'n',k:1.15,r:1.0},outer:['n'],windows:[{side:'n',c:1.6,w:.6,sill:1.05,h:.85,sashes:1}],floorMat:'tileF',
+    view:{x:1.15,z:-0.42,lx:0.1,lz:-1.15},top:{r:5}},
+  kueche:{key:'kueche',name:'Küche',color:'#c98f6b',x0:0,x1:2.4,z0:1.27,z1:4.27,area:'≈ 7',dims:'Maße geschätzt',
+    outer:['s','w'],windows:[{side:'s',c:1.4,w:.6,sill:1.0,h:1.0,sashes:1}],view:{x:2.05,z:1.6,lx:0.4,lz:3.9},top:{r:5.5}},
+  flur:{key:'flur',name:'Flur',color:'#bcb0a2',x0:0,x1:5.45,z0:0,z1:1.17,area:'6,4',dims:'1,17 m breit',
+    view:{x:0.4,z:0.62,lx:5.4,lz:0.55},top:{r:6.5}}
+};
+const ORDER=['wohn','schlaf','arbeit','bad','kueche','flur'];
+const NICHE={x0:10.05,x1:10.55,z0:0.3,z1:1.85,top:2.2};
+const DOORS=[
+  {axis:'z',line:-0.05,c0:0.11,c1:1.06,outer:true},
+  {axis:'x',line:-0.05,c0:0.85,c1:1.55,into:'bad',hinge:'c1',dir:-1},
+  {axis:'x',line:-0.05,c0:2.4,c1:3.15,into:'schlaf',hinge:'c0',dir:-1},
+  {axis:'x',line:1.22,c0:1.3,c1:2.1,into:'kueche',hinge:'c0',dir:1},
+  {axis:'x',line:1.22,c0:3.1,c1:3.9,into:'arbeit',hinge:'c1',dir:1},
+  {axis:'z',line:5.5,c0:0.2,c1:0.97,into:'wohn',hinge:'c1',dir:1}
+];
+const ceilGroup=new THREE.Group(),slopeGroup=new THREE.Group();scene.add(ceilGroup,slopeGroup);
+
+function windowAt(side,c,inner,w,sill,h,sashes,thick,opt={}){
+  const g=new THREE.Group(),sign={n:1,s:-1,w:1,e:-1}[side],axis=(side==='n'||side==='s')?'x':'z',ft=.06,fd=.07,fz=-sign*thick*.55;
+  const F=(a,b,c0,d,e,f,m)=>bb(a,b,c0,d,e,f,m,g);
+  F(-w/2,w/2,0,ft,fz-fd/2,fz+fd/2,M.frame);F(-w/2,w/2,h-ft,h,fz-fd/2,fz+fd/2,M.frame);
+  F(-w/2,-w/2+ft,0,h,fz-fd/2,fz+fd/2,M.frame);F(w/2-ft,w/2,0,h,fz-fd/2,fz+fd/2,M.frame);
+  for(let i=1;i<sashes;i++){const x=-w/2+i*w/sashes;F(x-.04,x+.04,0,h,fz-fd/2,fz+fd/2,M.frame);}
+  for(let i=0;i<sashes;i++){const sw=w/sashes,x=-w/2+(i+.5)*sw+sw*.36*(i%2?-1:1);F(x-.012,x+.012,h*.5-.07,h*.5+.05,fz+sign*fd/2,fz+sign*(fd/2+.035),M.chrome);}
+  const gl=new THREE.Mesh(new THREE.PlaneGeometry(w-.1,h-.1),M.sky);gl.position.set(0,h/2,fz-sign*.01);gl.castShadow=false;gl.userData.glass=true;g.add(gl);
+  F(-w/2-.03,w/2+.03,-.025,0,fz,sign*.05,M.sill);
+  if(sill>.75&&!opt.noRad){const rw=Math.min(w*.85,1.2);F(-rw/2,rw/2,.14-sill,Math.min(.66,sill-.08)-sill,sign*.035,sign*.12,M.rad);
+    F(-rw/2-.02,-rw/2,.08-sill,.18-sill,sign*.06,sign*.09,M.chrome);}
+  if(opt.blind){F(-w/2+.03,w/2-.03,h-.03-h*opt.blind,h-.03,fz+sign*(fd/2+.01),fz+sign*(fd/2+.02),M.greige);F(-w/2+.03,w/2-.03,h-.06,h-.02,fz+sign*.06,fz+sign*.1,M.white);}
+  g.position.set(axis==='x'?c:inner,sill,axis==='x'?inner:c);if(axis==='z')g.rotation.y=Math.PI/2;scene.add(g);return g;}
+
+function buildWall(axis,fixed,th,a,b,ops,mat){
+  ops.sort((p,q)=>p.c0-q.c0);let cur=a;
+  const seg=(c0,c1,y0,y1)=>{if(c1-c0<1e-3||y1-y0<1e-3)return;if(axis==='x')bb(c0,c1,y0,y1,fixed-th/2,fixed+th/2,mat,scene);else bb(fixed-th/2,fixed+th/2,y0,y1,c0,c1,mat,scene);};
+  for(const o of ops){seg(cur,o.c0,0,H);seg(o.c0,o.c1,0,o.y0);seg(o.c0,o.c1,o.y1,H);cur=o.c1;}seg(cur,b,0,H);}
+function baseboard(axis,inner,sign,a,b,skip){let cur=a;const s=[...skip].sort((p,q)=>p[0]-q[0]);
+  const put=(c0,c1)=>{if(c1-c0<.02)return;if(axis==='x')bb(c0,c1,0,.06,inner,inner+sign*.014,M.frame,scene);else bb(inner,inner+sign*.014,0,.06,c0,c1,M.frame,scene);};
+  for(const [p,q] of s){put(cur,p);cur=Math.max(cur,q);}put(cur,b);}
+function slopeY(room,x,z){const s=room.slope;if(!s)return H;
+  const v=s.side==='n'?z-room.z0:s.side==='s'?room.z1-z:s.side==='w'?x-room.x0:room.x1-x;return v>=s.r?H:s.k+(H-s.k)*Math.max(v,0)/s.r;}
+function buildSlope(R,cuts){const {x0,x1,z0,z1}=R,{side,k,r}=R.slope;const along=(side==='n'||side==='s')?[x0,x1]:[z0,z1];
+  const P=(c,y,off)=>side==='n'?[c,y,z0+off]:side==='s'?[c,y,z1-off]:side==='w'?[x0+off,y,c]:[x1-off,y,c];
+  let ranges=[along];for(const cut of cuts)ranges=ranges.flatMap(([a,b])=>cut[1]<=a||cut[0]>=b?[[a,b]]:[[a,cut[0]],[cut[1],b]].filter(([p,q])=>q-p>.001));
+  for(const [a,b] of ranges)poly([P(a,k,0),P(b,k,0),P(b,H,r),P(a,H,r)],M.slope,slopeGroup);
+  for(const cut of cuts)for(const c of cut)poly([P(c,k,0),P(c,H,0),P(c,H,r)],M.slope,slopeGroup);}
+function buildRoom(id){const R=ROOMS[id],{x0,x1,z0,z1}=R,outer=R.outer||[];
+  const sides=[{side:'n',axis:'x',bound:z0,sign:-1,a:x0,b:x1},{side:'s',axis:'x',bound:z1,sign:1,a:x0,b:x1},{side:'w',axis:'z',bound:x0,sign:-1,a:z0,b:z1},{side:'e',axis:'z',bound:x1,sign:1,a:z0,b:z1}];
+  for(const s of sides){const isOut=outer.includes(s.side),th=isOut?TO:T,edge=s.bound+s.sign*T,fixed=s.bound+s.sign*th/2;const ops=[],skip=[];
+    for(const d of DOORS)if(d.axis===s.axis&&Math.abs(d.line-edge)<.02&&d.c1>s.a-T&&d.c0<s.b+T){ops.push({c0:d.c0,c1:d.c1,y0:0,y1:2.02});skip.push([d.c0-.07,d.c1+.07]);}
+    for(const w of (R.windows||[]))if(w.side===s.side){ops.push({c0:w.c-w.w/2,c1:w.c+w.w/2,y0:w.sill,y1:w.sill+w.h});windowAt(w.side,w.c,s.bound,w.w,w.sill,w.h,w.sashes,th,{blind:w.blind});}
+    if(id==='wohn'&&s.side==='e'){ops.push({c0:NICHE.z0,c1:NICHE.z1,y0:0,y1:NICHE.top});skip.push([NICHE.z0,NICHE.z1]);}
+    const mat=M[(R.sideMat&&R.sideMat[s.side])||'wall'];
+    buildWall(s.axis,fixed,th,s.a-th,s.b+th,ops,mat);
+    if(id!=='bad')baseboard(s.axis,s.bound,-s.sign,s.a,s.b,skip);}
+  floorPlane(x0,x1,z0,z1,M[R.floorMat||'floor']);ceilPlane(x0,x1,z0,z1,H,ceilGroup);
+  if(R.slope){const cuts=[];for(const w of (R.windows||[]))if(w.side===R.slope.side)cuts.push([w.c-w.w/2-.12,w.c+w.w/2+.12]);buildSlope(R,cuts);}}
+for(const id of ORDER)buildRoom(id);
+(function niche(){const N=NICHE;
+  bb(N.x0,N.x1+TO,0,H,N.z0-.1,N.z0,M.wall,scene);bb(N.x0,N.x1+TO,0,H,N.z1,N.z1+.1,M.wall,scene);
+  const c=(N.z0+N.z1)/2;buildWall('z',N.x1+TO/2,TO,N.z0-.1,N.z1+.1,[{c0:c-.65,c1:c+.65,y0:.85,y1:1.95}],M.wall);
+  windowAt('e',c,N.x1,1.3,.85,1.1,2,TO,{blind:.3});
+  floorPlane(N.x0-T,N.x1,N.z0,N.z1,M.floor);ceilPlane(N.x0-T,N.x1,N.z0,N.z1,N.top,ceilGroup);
+  baseboard('z',N.x1,-1,N.z0,c-.65,[]);baseboard('z',N.x1,-1,c+.65,N.z1,[]);})();
+// thresholds, casings, door leaves, front door
+const BLK=[];const block=(x0,x1,z0,z1)=>BLK.push([Math.min(x0,x1),Math.max(x0,x1),Math.min(z0,z1),Math.max(z0,z1),CUR]);
+for(const d of DOORS){const w=d.c1-d.c0,g=new THREE.Group(),F=(a,b,c,e,f,h,m)=>bb(a,b,c,e,f,h,m,g);
+  if(!d.outer){if(d.axis==='x')floorPlane(d.c0,d.c1,d.line-.06,d.line+.06,M.floor,.001);else floorPlane(d.line-.06,d.line+.06,d.c0,d.c1,M.floor,.001);}
+  F(-w/2,-w/2+.025,0,2.02,-.075,.075,M.frame);F(w/2-.025,w/2,0,2.02,-.075,.075,M.frame);F(-w/2,w/2,1.995,2.02,-.075,.075,M.frame);
+  for(const s of [-1,1]){F(-w/2-.06,-w/2,0,2.08,s*.05,s*.066,M.frame);F(w/2,w/2+.06,0,2.08,s*.05,s*.066,M.frame);F(-w/2-.06,w/2+.06,2.02,2.08,s*.05,s*.066,M.frame);}
+  if(d.outer){F(-w/2+.025,w/2-.025,0,1.99,-.022,.022,M.anth);F(w/2-.14,w/2-.1,1.0,1.03,.022,.08,M.chrome);F(w/2-.22,w/2-.1,1.0,1.03,.06,.08,M.chrome);cyl(.008,.008,.02,M.chrome,w/2-.12,1.1,.03,g);}
+  const c=(d.c0+d.c1)/2;g.position.set(d.axis==='x'?c:d.line,0,d.axis==='x'?d.line:c);if(d.axis==='z')g.rotation.y=Math.PI/2;scene.add(g);
+  if(!d.outer){// open door leaf against the wall inside the room
+    const hc=d.hinge==='c0'?d.c0+.03:d.c1-.03,lw=w-.06,ext=d.line+d.dir*.075;
+    if(d.axis==='x'){bb(hc-.02,hc+.02,.005,1.98,ext,ext+d.dir*lw,M.door,scene);const hz=ext+d.dir*(lw-.07);bb(hc-.08,hc+.08,1.0,1.02,hz-.01,hz+.01,M.chrome,scene);block(hc-.06,hc+.06,ext,ext+d.dir*lw);}
+    else{bb(ext,ext+d.dir*lw,.005,1.98,hc-.02,hc+.02,M.door,scene);const hx=ext+d.dir*(lw-.07);bb(hx-.01,hx+.01,1.0,1.02,hc-.08,hc+.08,M.chrome,scene);block(ext,ext+d.dir*lw,hc-.06,hc+.06);}}}
+
+/* ---------------- lights ---------------- */
+const hemi=new THREE.HemisphereLight('#ffe9d2','#4a3d33',.25);scene.add(hemi);
+const sun=new THREE.DirectionalLight('#fff1dc',0);sun.position.set(9,9,12);sun.target.position.set(5,0,1);scene.add(sun,sun.target);
+sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:1,far:40});sun.shadow.bias=-.0004;sun.shadow.normalBias=.02;
+const lamps=[];
+function spot(x,z,i,color='#ffe0c0',ang=1.15){const s=new THREE.SpotLight(color,i,0,ang,.9,2);s.position.set(x,H-.06,z);s.target.position.set(x,0,z);
+  s.castShadow=true;s.shadow.mapSize.set(LOW?512:1024,LOW?512:1024);s.shadow.bias=-.0005;s.shadow.normalBias=.02;s.shadow.radius=4;s.shadow.camera.near=.1;s.shadow.camera.far=8;
+  scene.add(s,s.target);lamps.push({l:s,base:i,day:0});if(CUR)reg(CUR,s);return s;}
+function point(x,y,z,i,color='#ffb468',dist=0){const l=new THREE.PointLight(color,i,dist,2);l.position.set(x,y,z);scene.add(l);lamps.push({l,base:i,day:0});if(CUR)reg(CUR,l);return l;}
+function rect(w,h,i,color,pos,look){const r=new THREE.RectAreaLight(color,i,w,h);r.position.copy(pos);r.lookAt(look);scene.add(r);lamps.push({l:r,base:i,day:0});if(CUR)reg(CUR,r);return r;}
+
+/* ---------------- plants & small things ---------------- */
+function leafy(x,z,potR,potH,n,h,spread,leafW,leafL,potMat=M.pot){
+  cyl(potR,potR*.82,potH,potMat,x,0,z);cyl(potR*.93,potR*.93,.01,M.black,x,potH-.02,z);
+  for(let i=0;i<n;i++){const a=i/n*Math.PI*2+rnd()*.6,rr=spread*(.35+rnd()*.65),hh=potH+h*(.5+rnd()*.5);
+    const base=V(x+(rnd()-.5)*.05,potH,z+(rnd()-.5)*.05),tip=V(x+Math.cos(a)*rr*.6,hh-leafL*.6,z+Math.sin(a)*rr*.6);rod(base,tip,.007,M.leafD);
+    const lf=new THREE.Mesh(new THREE.SphereGeometry(1,14,8),rnd()<.5?M.leaf:M.leafD);lf.scale.set(leafW,leafL,.012);
+    const dir=V(Math.cos(a)*rr*.5,leafL,Math.sin(a)*rr*.5).normalize();lf.quaternion.setFromUnitVectors(UP,dir);lf.rotateY(rnd()*Math.PI);lf.position.copy(tip).addScaledVector(dir,leafL*.9);TG.add(lf);}}
+function bush(x,y,z,r,n,mat=M.leaf){for(let i=0;i<n;i++)sph(r*(.35+rnd()*.35),rnd()<.5?mat:M.leafD,x+(rnd()-.5)*r*1.4,y+(rnd()-.2)*r*.9,z+(rnd()-.5)*r*1.4);}
+function tree(x,z,h,potR,leaves,leafR,mat){cyl(potR,potR*.85,potR*1.6,M.pot,x,0,z);const top=potR*1.6;
+  rod(V(x,top,z),V(x+.02,top+h*.55,z),.02,M.trunk);rod(V(x+.02,top+h*.4,z),V(x+.14,top+h*.7,z+.05),.012,M.trunk);rod(V(x+.02,top+h*.45,z),V(x-.12,top+h*.75,z-.06),.012,M.trunk);
+  for(let i=0;i<leaves;i++){const a=rnd()*Math.PI*2,r=rnd()*h*.25,y=top+h*(.5+rnd()*.5);sph(leafR*(.6+rnd()*.6),mat,x+Math.cos(a)*r,y,z+Math.sin(a)*r,TG,1,.75,1);}}
+function candle(x,y,z,r=.035,h=.09){cyl(r,r,h,M.candle,x,y,z);const f=sph(.009,M.flame,x,y+h+.012,z,TG,1,1.8,1);f.raycast=noPick;glow('r',.14,.14,'#ffb45c',.5,x,y+h+.02,z);}
+function chairT(x,z,rot){const g=new THREE.Group();
+  rbb(-.22,.22,.44,.52,-.2,.22,.05,M.chairF,g);
+  const back=new THREE.Mesh(new THREE.CylinderGeometry(.26,.24,.34,28,1,true,Math.PI*.7,Math.PI*.6),M.chairF);back.position.set(0,.74,.04);g.add(back);
+  for(const [lx,lz] of [[-.19,-.17],[.19,-.17],[-.19,.19],[.19,.19]]){const l=new THREE.Mesh(new THREE.CylinderGeometry(.01,.008,.44,8),M.metal);l.position.set(lx,.22,lz);g.add(l);}
+  bb(-.2,.2,.08,.095,.19,.2,M.metal,g);g.position.set(x,0,z);g.rotation.y=rot;TG.add(g);contact(x,z,.7,.7,.22);}
+function chairN(x,z,rot){const g=new THREE.Group();
+  rbb(-.21,.21,.44,.5,-.2,.2,.04,M.chairF,g);rbb(-.2,.2,.62,.86,-.22,-.18,.04,M.chairF,g);
+  for(const [lx,lz] of [[-.18,-.17],[.18,-.17],[-.18,.17],[.18,.17]]){const l=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.44,8),M.metal);l.position.set(lx,.22,lz);g.add(l);}
+  for(const lx of [-.18,.18])rod(V(lx,.44,-.17),V(lx,.84,-.2),.01,M.metal,g);g.position.set(x,0,z);g.rotation.y=rot;TG.add(g);contact(x,z,.6,.6,.22);}
+const face=(x,z,tx,tz)=>Math.atan2(tx-x,tz-z);
+function solklint(x,y,z,top){rod(V(x,top,z),V(x,y+.13,z),.003,M.metal);cyl(.03,.03,.03,M.brass,x,y+.1,z);sph(.11,M.glassG,x,y,z);cyl(.012,.012,.06,M.bulb,x,y-.03,z,TG,8);
+  glow('r',.38,.38,'#ffb060',.4,x,y,z);}
+
+/* ---------------- Wohnzimmer ---------------- */
+const W=ROOMS.wohn;
+prod('wohn-poco-sofa',()=>{// POCO Ecksofa Rise L, 245 x 155, anthrazit Microfaser, Ottomane rechts
+  const x0=7.51,x1=9.96,zb=-0.95,zf=zb+.92,cx=x1-.9,ze=zb+1.55;
+  bb(x0+.05,x1-.05,0,.08,zb+.05,zf-.05,M.black);bb(cx+.05,x1-.05,0,.08,zf-.1,ze-.05,M.black);
+  rbb(x0,x1,.08,.42,zb,zf,.04,M.sofa);rbb(cx,x1,.08,.42,zf-.05,ze,.04,M.sofa);
+  rbb(x0,x1,.38,.66,zb,zb+.18,.04,M.sofa);rbb(x0,x0+.18,.38,.62,zb,zf,.05,M.sofa);
+  rbb(x0+.19,x0+.98,.42,.52,zb+.18,zf,.04,M.sofa);rbb(x0+1.0,cx-.01,.42,.52,zb+.18,zf,.04,M.sofa);rbb(cx+.01,x1,.42,.52,zb+.18,ze-.01,.04,M.sofa);
+  for(const [a,b] of [[x0+.19,x0+.98],[x0+1.0,cx-.01],[cx+.01,x1]]){const c=rbb(a,b,.48,.86,zb+.16,zb+.38,.08,M.sofa);c.rotation.x=-.16;}
+  for(const [x,m,r] of [[7.95,M.brown,.18],[8.3,M.cream,-.12],[9.35,M.greige,.14],[9.66,M.brown,-.18]]){const p=rbb(x-.22,x+.22,.54,.95,zb+.34,zb+.48,.07,m);p.rotation.set(-.22,r,r*.5);}
+  const th=rbb(x0+.01,x0+.2,.56,.68,zb+.25,zf+.05,.04,M.cream);th.rotation.z=.06;rbb(x0+.17,x0+.55,.52,.56,zb+.4,zf+.02,.02,M.cream);
+  contact((x0+x1)/2,(zb+zf)/2,2.8,1.25,.4);contact(cx+.45,.3,1.1,1.0,.35);block(x0,x1,zb,zf);block(cx,x1,zf,ze);});
+function slatPanel(axis,a,b,surf,sign,y0,y1,pitch=.045){// felt backing + walnut slats (instanced)
+  if(axis==='x')bb(a,b,y0,y1,surf,surf+sign*.009,M.felt,TG);else bb(surf,surf+sign*.009,y0,y1,a,b,M.felt,TG);
+  const n=Math.floor((b-a)/pitch),sw=.027,sd=.013,h=y1-y0;const geo=worldUV(new THREE.BoxGeometry(axis==='x'?sw:sd,h,axis==='x'?sd:sw),sw,h,sd);
+  const im=new THREE.InstancedMesh(geo,M.slat,n),m4=new THREE.Matrix4(),st0=a+((b-a)-n*pitch)/2,off=surf+sign*(.009+sd/2);
+  for(let i=0;i<n;i++){const c=st0+pitch*(i+.5);if(axis==='x')m4.makeTranslation(c,(y0+y1)/2,off);else m4.makeTranslation(off,(y0+y1)/2,c);im.setMatrixAt(i,m4);}TG.add(im);}
+prod('wohn-otto-paneel',()=>{slatPanel('x',7.2,9.6,2.13,-1,.02,2.42);});
+prod('wohn-besta',()=>{// BESTÅ TV-Bank 240x42x38, wall-mounted in front of the slat panels
+  const a=7.2,b=9.6,z0=1.688,z1=2.108,y0=.24,y1=.62;bb(a,b,y0,y1,z0+.02,z1,M.blackbrown);
+  for(let i=0;i<4;i++){const x=a+i*.6;bb(x+.003,x+.597,y0+.003,y1-.003,z0,z0+.02,M.walnutD);}
+  contact((a+b)/2,1.92,2.6,.7,.25);block(a,b,z0,z1);});
+prod('wohn-tcl',()=>{// TCL 65C7L on its feet
+  const cx=8.4,z=1.93,y0=.69;bb(cx-.725,cx+.725,y0,y0+.84,z-.015,z+.015,M.screen);bb(cx-.72,cx+.72,y0+.06,y0+.84,z+.015,z+.05,M.black);
+  for(const s of [-1,1]){bb(cx+s*.6-.015,cx+s*.6+.015,.62,y0+.02,z-.1,z+.1,M.metal);}glow('r',2.2,1.4,'#ff9d55',.22,cx,y0+.45,2.1);});
+prod('wohn-ormanas',()=>{bb(7.25,9.55,.235,.24,1.8,2.05,M.led);glow('l',2.4,.55,'#ffa955',.75,8.4,.004,1.9,true,0);glow('l',2.4,.3,'#ffa955',.6,8.4,.12,2.1);
+  rect(2.3,.12,6,'#ffb46a',V(8.4,.23,1.92),V(8.4,0,1.92));});
+prod('wohn-stockholm',()=>{const x=8.35,z=.62;cyl(.45,.45,.04,M.oakD,x,.34,z,TG,48);for(let i=0;i<4;i++){const a=i*Math.PI/2+Math.PI/4;cyl(.035,.03,.34,M.oakD,x+Math.cos(a)*.3,0,z+Math.sin(a)*.3);}
+  contact(x,z,1.2,1.2,.3);block(x-.45,x+.45,z-.45,z+.45);
+  bb(8.1,8.42,.38,.395,.48,.72,M.walnutD);candle(8.17,.395,.55);candle(8.27,.395,.65,.03,.07);cyl(.055,.045,.18,M.glassG,8.5,.38,.7);bush(8.5,.62,.7,.1,7,M.leaf);});
+prod('wohn-borgeby',()=>{const x=9.0,z=1.07;cyl(.23,.23,.025,M.black,x,.525,z,TG,40);cyl(.03,.03,.5,M.black,x,.025,z);cyl(.17,.18,.025,M.black,x,0,z);contact(x,z,.6,.6,.25);block(x-.23,x+.23,z-.23,z+.23);
+  candle(x-.05,.55,z,.04,.12);});
+prod('wohn-lisabo',()=>{const x=6.4,z=-.18;cyl(.525,.525,.03,M.black,x,.71,z,TG,56);
+  for(let i=0;i<4;i++){const a=i*Math.PI/2+Math.PI/4;rod(V(x+Math.cos(a)*.2,.71,z+Math.sin(a)*.2),V(x+Math.cos(a)*.36,0,z+Math.sin(a)*.36),.02,M.black);}
+  contact(x,z,1.5,1.5,.3);block(x-.52,x+.52,z-.52,z+.52);candle(x-.05,.74,z,.04,.1);cyl(.06,.05,.2,M.glassG,x+.1,.74,z-.08);bush(x+.1,.99,z-.08,.09,6,M.leaf);});
+prod('wohn-tossberg',()=>{for(const [x,z] of [[5.78,-.18],[7.02,-.18],[6.4,-.8],[6.4,.44]])chairT(x,z,face(x,z,6.4,-.18));});
+block(5.7,7.25,-.92,.68);
+prod('wohn-solklint',()=>{for(const [x,y,z] of [[6.18,1.5,-.12],[6.42,1.58,-.25],[6.64,1.48,-.08]])solklint(x,y,z,slopeY(W,x,z));});
+point(6.42,1.35,-.18,9,'#ffb368');
+prod('wohn-kungshult',()=>{const bx=7.08,bz=.62;cyl(.19,.2,.04,M.metal,bx,0,bz,TG,40);
+  const arc=new THREE.CatmullRomCurve3([V(bx,.04,bz),V(bx,1.5,bz),V(bx+.25,2.05,bz),V(bx+.75,2.14,bz),V(bx+1.15,1.95,bz)]);TG.add(new THREE.Mesh(new THREE.TubeGeometry(arc,48,.012,8),M.metal));
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.12,.22,.24,36,1,true),M.shadeW);sh.position.set(bx+1.17,1.8,bz);TG.add(sh);sph(.03,M.bulb,bx+1.17,1.78,bz);
+  point(8.25,1.72,.62,14,'#ffc07a');});
+prod('wohn-nymane',()=>{cyl(.225,.225,.05,M.anth,8.4,H-.05,.9,TG,48);cyl(.2,.2,.004,M.bulb,8.4,H-.054,.9,TG,48);});
+spot(8.4,.85,70);
+prod('wohn-stoense',()=>{rbb(7.0,10.0,0,.012,-.62,1.38,.03,M.rug);});
+prod('wohn-fejka',()=>{tree(9.86,1.86,1.05,.13,70,.05,M.olive);contact(9.86,1.86,.6,.6,.3);block(9.7,10.05,1.7,2.05);});
+prod('wohn-strelitzia',()=>{leafy(5.86,1.86,.17,.36,9,1.05,.55,.11,.26);contact(5.86,1.86,.7,.7,.3);block(5.6,6.1,1.6,2.1);});
+prod('wohn-rollo',()=>{});
+spot(6.4,1.1,25,'#ffd6a8',1.0);
+
+/* ---------------- Schlafzimmer ---------------- */
+prod('schlaf-idanas',()=>{// IDANÄS 170 x 224, Gunnared dunkelgrau, headboard on the east wall
+  const x0=3.21,x1=5.45,z0=-3.05,z1=-1.35;
+  rbb(x0,x1-.08,.03,.42,z0,z1,.05,M.bedF);bb(x0+.05,x1-.13,0,.04,z0+.05,z1-.05,M.black);
+  rbb(x1-.13,x1,.03,1.22,z0-.04,z1+.04,.06,M.bedF);for(const z of [-2.8,-2.42,-1.98,-1.6])rbb(x1-.2,x1-.1,.48,1.15,z-.18,z+.18,.05,M.bedF);
+  rbb(x0+.05,x1-.15,.42,.64,z0+.05,z1-.05,.05,M.linen);rbb(x0+.02,x1-.62,.6,.72,z0+.02,z1-.02,.06,M.linen);rbb(x0+.03,x0+.55,.7,.75,z0+.01,z1-.01,.03,M.greige);
+  for(const z of [-2.62,-1.78]){const p=rbb(x1-.55,x1-.2,.6,.95,z-.37,z+.37,.08,M.linen);p.rotation.z=.32;}
+  contact((x0+x1)/2,(z0+z1)/2,2.6,2.1,.4);block(x0,x1,z0,z1);});
+prod('schlaf-storklinta',()=>{for(const [a,b] of [[-3.5,-3.1],[-1.3,-.9]]){bb(4.95,5.45,0,.53,a,b,M.oakD);bb(4.948,4.95,.27,.272,a+.02,b-.02,M.black);
+  for(const y of [.14,.4])bb(4.94,4.95,y,y+.015,(a+b)/2-.07,(a+b)/2+.07,M.metal);contact(5.2,(a+b)/2,.7,.6,.25);block(4.95,5.45,a,b);}});
+prod('schlaf-solklint-tl',()=>{for(const z of [-3.3,-1.1]){cyl(.07,.07,.02,M.brass,5.22,.53,z);rod(V(5.22,.55,z),V(5.22,.72,z),.008,M.brass);sph(.12,M.glassG,5.22,.8,z);cyl(.01,.01,.05,M.bulb,5.22,.76,z,TG,8);
+  glow('r',.6,.6,'#ffb46a',.45,5.22,.8,z);}});
+point(5.12,.85,-3.3,4,'#ffb468');point(5.12,.85,-1.1,4,'#ffb468');
+prod('schlaf-pax',()=>{// PAX/MEHAMN 150x66x201 sliding doors, south wall
+  const x0=3.35,x1=4.85,z0=-.76,z1=-.1;bb(x0,x1,0,2.01,z0+.03,z1,M.anth);
+  bb(x0+.01,(x0+x1)/2+.02,.02,1.99,z0+.02,z0+.04,M.walnut);bb((x0+x1)/2-.02,x1-.01,.02,1.99,z0,z0+.02,M.walnut);
+  bb(x0,x1,1.99,2.01,z0,z0+.05,M.anth);contact((x0+x1)/2,(z0+z1)/2,1.8,.9,.25);block(x0,x1,z0,z1);});
+prod('schlaf-vindkast',()=>{rod(V(4.1,H,-1.95),V(4.1,2.12,-1.95),.004,M.metal);
+  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.25,1),M.paper);m.position.set(4.1,1.92,-1.95);m.scale.set(1,.7,1);TG.add(m);glow('r',1.3,1.3,'#ffc17a',.25,4.1,1.92,-1.95);});
+spot(4.1,-1.95,55);
+prod('schlaf-arende',()=>{rbb(2.9,5.2,0,.02,-3.0,-1.4,.04,M.rug);});
+prod('schlaf-fejka',()=>{leafy(2.5,-1.95,.16,.34,10,1.05,.6,.06,.34);contact(2.5,-1.95,.7,.7,.3);block(2.25,2.75,-2.2,-1.7);});
+prod('schlaf-rollo',()=>{});
+
+/* ---------------- Arbeitszimmer ---------------- */
+prod('arbeit-besta',()=>{const x0=2.5,x1=2.92,z0=1.45,z1=2.65;bb(x0,x1-.02,.12,.87,z0,z1,M.blackbrown);
+  for(const [a,b] of [[z0,1.95],[1.95,z1]])bb(x1-.02,x1,.123,.867,a+.003,b-.003,M.walnutD);
+  for(const [x,z] of [[2.55,1.5],[2.55,2.6],[2.85,1.5],[2.85,2.6]])cyl(.02,.015,.12,M.blackbrown,x,0,z);
+  cyl(.06,.05,.2,M.glassG,2.7,.87,1.75);bush(2.7,1.12,1.75,.09,6);bb(2.6,2.85,.87,.95,2.2,2.5,M.cream);contact(2.71,2.05,.7,1.4,.25);block(x0,x1,z0,z1);});
+prod('arbeit-kabs-seja',()=>{// Kabs Schlafsofa Seja 190x73x72, Stoff anthrazit, west wall
+  const x0=2.5,x1=3.23,z0=2.72,z1=4.62;
+  for(const [x,z] of [[x0+.08,z0+.08],[x1-.08,z0+.08],[x0+.08,z1-.08],[x1-.08,z1-.08]])cyl(.02,.015,.1,M.black,x,0,z);
+  rbb(x0,x1,.1,.38,z0+.07,z1-.07,.04,M.knisa);rbb(x0,x0+.2,.36,.72,z0+.07,z1-.07,.05,M.knisa);
+  for(const [a,b] of [[z0,z0+.07],[z1-.07,z1]])rbb(x0,x1,.1,.58,a,b,.03,M.knisa);
+  for(const [z,m] of [[3.35,M.brown],[4.0,M.greige]]){const p=rbb(2.72,2.86,.44,.8,z-.2,z+.2,.05,m);p.rotation.z=-.2;}
+  contact(2.87,3.67,1.1,2.1,.35);block(x0,x1,z0,z1);});
+prod('arbeit-mittzon',()=>{const x0=2.85,x1=4.05,z0=4.92,z1=5.52;bb(x0,x1,.715,.74,z0,z1,M.walnut);
+  for(const x of [x0+.06,x1-.06]){bb(x-.02,x+.02,0,.715,z0+.05,z0+.09,M.metal);bb(x-.02,x+.02,0,.715,z1-.09,z1-.05,M.metal);bb(x-.02,x+.02,.02,.05,z0+.05,z1-.05,M.metal);}
+  bb(x0+.08,x1-.08,.66,.715,z1-.12,z1-.08,M.metal);contact((x0+x1)/2,(z0+z1)/2,1.4,.8,.25);block(x0,x1,z0,z1);
+  bb(3.2,3.55,.74,.76,5.05,5.3,M.anth);bb(3.21,3.54,.76,.96,5.29,5.3,M.anth);});
+prod('arbeit-forsa',()=>{cyl(.07,.07,.02,M.metal,3.9,.74,5.35);rod(V(3.9,.76,5.35),V(3.9,1.08,5.32),.008,M.metal);rod(V(3.9,1.08,5.32),V(3.78,1.12,5.18),.008,M.metal);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.03,.065,.11,24,1,true),M.metal);sh.position.set(3.75,1.07,5.15);sh.rotation.x=-.5;TG.add(sh);glow('r',.6,.6,'#ffc27a',.5,3.72,.745,5.08,true,0);});
+point(3.72,.95,5.1,3,'#ffc890');
+prod('arbeit-markus',()=>{const g=new THREE.Group();rbb(-.25,.25,.45,.54,-.24,.24,.05,M.vissle,g);rbb(-.24,.24,.6,1.25,-.3,-.2,.06,M.vissle,g);rbb(-.17,.17,1.1,1.3,-.31,-.24,.05,M.vissle,g);
+  for(const s of [-1,1]){bb(s*.24-.02,s*.24+.02,.54,.68,-.15,.12,M.metal,g);bb(s*.24-.04,s*.24+.04,.68,.7,-.1,.14,M.black,g);}
+  bb(-.02,.02,.1,.46,-.02,.02,M.metal,g);for(let i=0;i<5;i++){const a=i/5*Math.PI*2;rod(V(0,.08,0),V(Math.cos(a)*.32,.05,Math.sin(a)*.32),.016,M.metal,g);sph(.025,M.black,Math.cos(a)*.32,.025,Math.sin(a)*.32,g);}
+  g.position.set(3.45,0,4.45);g.rotation.y=Math.PI+.12;TG.add(g);contact(3.45,4.45,.8,.8,.25);});
+prod('arbeit-morum',()=>{rbb(3.35,4.95,0,.008,2.45,4.75,.03,M.rugB);});
+prod('arbeit-fejka',()=>{tree(4.62,5.18,1.1,.12,60,.035,M.leaf);contact(4.62,5.18,.6,.6,.3);block(4.4,4.85,4.95,5.4);});
+(function(){rod(V(3.7,H,3.4),V(3.7,2.18,3.4),.004,M.metal);sph(.15,M.paper,3.7,2.03,3.4);})();
+spot(3.7,3.3,50);
+
+/* ---------------- Bad ---------------- */
+// real tiles: white 15x15 behind tub and basin
+bb(0,.006,0,1.55,-2.7,-.1,M.tileW,scene);bb(0,2.1,0,1.0,-2.7,-2.694,M.tileW,scene);
+(function tub(){bb(0,.75,0,.4,-2.7,-.95,M.tileW,scene);
+  bb(0,.75,.4,.58,-2.7,-2.62,M.ceramic,scene);bb(0,.75,.4,.58,-1.03,-.95,M.ceramic,scene);bb(0,.08,.4,.58,-2.62,-1.03,M.ceramic,scene);bb(.67,.75,.4,.58,-2.62,-1.03,M.ceramic,scene);
+  bb(.08,.67,.38,.4,-2.62,-1.03,M.ceramic,scene);rod(V(.03,.9,-1.25),V(.03,1.85,-1.25),.01,M.chrome,scene);cyl(.06,.06,.02,M.chrome,.09,1.86,-1.25,scene);bb(0,.06,.62,.7,-1.12,-1.02,M.chrome,scene);block(0,.75,-2.7,-.95);})();
+prod('bad-luddhagtorn',()=>{rod(V(.76,2.02,-.95),V(.76,2.02,-2.0),.01,M.chrome);
+  const shp=new THREE.Shape();shp.moveTo(0,0);const N=14;for(let i=0;i<=N;i++)shp.lineTo(i/N*.75,Math.sin(i*1.9)*.025);
+  const pts=[];for(let i=0;i<=40;i++){const t=i/40;pts.push(V(.76+Math.sin(t*30)*.035,0,-.96-t*.26));}
+  const curve=new THREE.CatmullRomCurve3(pts);const geo=new THREE.PlaneGeometry(1,1.42,40,1);const pos=geo.attributes.position;
+  for(let i=0;i<pos.count;i++){const u=(pos.getX(i)+.5),p=curve.getPoint(u);pos.setXYZ(i,p.x,.6+(pos.getY(i)+.71),p.z);}geo.computeVertexNormals();
+  TG.add(new THREE.Mesh(geo,M.curtain));});
+prod('bad-angsjon',()=>{bb(0,.475,.2,.69,-.86,-.26,M.oak);for(const y of [.44])bb(.474,.476,y,y+.004,-.85,-.27,M.black);});
+prod('bad-orrsjon',()=>{rbb(0,.49,.69,.86,-.87,-.25,.05,M.ceramic);bb(.12,.38,.85,.861,-.78,-.34,M.whiteM);});
+prod('bad-saljen',()=>{cyl(.022,.022,.14,M.metal,.06,.86,-.56);rod(V(.06,1.0,-.56),V(.17,1.0,-.56),.012,M.metal);rod(V(.06,1.0,-.56),V(.02,1.06,-.56),.007,M.metal);});
+prod('bad-faxalven',()=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,.02,64),M.mirror);m.rotation.z=Math.PI/2;m.position.set(.035,1.5,-.56);TG.add(m);
+  const r=new THREE.Mesh(new THREE.TorusGeometry(.39,.008,8,64),M.led);r.rotation.y=Math.PI/2;r.position.set(.022,1.5,-.56);TG.add(r);
+  glow('r',1.15,1.15,'#ffd2a0',.55,.008,1.5,-.56,false,Math.PI/2);rect(.6,.6,5,'#ffe0bd',V(.06,1.5,-.56),V(1,1.5,-.56));});
+prod('bad-bosch',()=>{bb(1.48,2.08,.02,.86,-1.62,-1.02,M.white);const r=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.03,48),M.chrome);r.rotation.z=Math.PI/2;r.position.set(1.47,.45,-1.32);TG.add(r);
+  const gl=new THREE.Mesh(new THREE.CylinderGeometry(.155,.155,.035,48),M.screen);gl.rotation.z=Math.PI/2;gl.position.set(1.468,.45,-1.32);TG.add(gl);bb(1.475,1.48,.72,.82,-1.6,-1.04,M.whiteM);
+  const k=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.02,24),M.chrome);k.rotation.z=Math.PI/2;k.position.set(1.47,.77,-1.15);TG.add(k);});
+prod('bad-xavax',()=>{bb(1.48,2.08,.86,.89,-1.62,-1.02,M.metal);});
+prod('bad-siemens',()=>{bb(1.48,2.08,.89,1.73,-1.62,-1.02,M.white);const r=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.03,48),M.chrome);r.rotation.z=Math.PI/2;r.position.set(1.47,1.28,-1.32);TG.add(r);
+  const gl=new THREE.Mesh(new THREE.CylinderGeometry(.165,.165,.035,48),M.anth);gl.rotation.z=Math.PI/2;gl.position.set(1.468,1.28,-1.32);TG.add(gl);bb(1.475,1.48,1.6,1.7,-1.6,-1.04,M.anth);});
+block(1.47,2.1,-1.65,-1.0);contact(1.78,-1.32,.8,.8,.3);
+prod('bad-nysjon',()=>{bb(1.8,2.1,0,1.9,-.98,-.68,M.white);bb(1.798,1.8,.02,1.88,-.83,-.829,M.whiteM);cyl(.008,.008,.12,M.chrome,1.79,1.0,-.71);block(1.8,2.1,-.98,-.68);});
+(function toilet(){bb(.82,1.18,.42,.8,-2.69,-2.52,M.ceramic,scene);rbb(.84,1.16,0,.42,-2.52,-2.02,.08,M.ceramic,scene);rbb(.83,1.17,.42,.46,-2.52,-2.0,.04,M.ceramic,scene);
+  contact(1.0,-2.3,.7,.9,.3);block(.8,1.2,-2.7,-2.0);})();
+prod('bad-toftbo',()=>{rbb(.88,1.48,0,.012,-2.0,-.8,.03,M.mat);});
+prod('bad-borrby',()=>{for(const [x,z] of [[.95,-.4],[.98,-1.95]]){bb(x-.08,x+.08,0,.02,z-.08,z+.08,M.metal);bb(x-.08,x+.08,.26,.28,z-.08,z+.08,M.metal);
+  for(const [a,b] of [[-.08,-.08],[.08,-.08],[-.08,.08],[.08,.08]])bb(x+a-.006,x+a+.006,0,.28,z+b-.006,z+b+.006,M.metal);bb(x-.075,x+.075,.02,.26,z-.075,z+.075,M.glassC);candle(x,.02,z,.035,.1);}});
+spot(1.05,-1.35,32,'#ffd8b0',1.25);
+
+/* ---------------- Küche (existing kitchen, colours assumed) ---------------- */
+(function kitchen(){bb(0,.62,0,2.15,1.32,1.95,M.whiteM,scene);bb(0,.6,.1,.86,1.95,4.27,M.whiteM,scene);bb(.04,.56,0,.1,1.95,4.27,M.anth,scene);
+  for(let z=2.55;z<4.2;z+=.6)bb(.6,.603,.12,.84,z-.002,z+.002,M.anth,scene);bb(0,.63,.86,.9,1.95,4.27,M.oak,scene);bb(0,.006,.9,1.45,1.95,4.27,M.tileW,scene);
+  bb(.12,.5,.9,.903,3.4,3.85,M.chrome,scene);rod(V(.07,.9,3.62),V(.07,1.2,3.62),.012,M.chrome,scene);rod(V(.07,1.2,3.62),V(.25,1.2,3.62),.01,M.chrome,scene);
+  bb(.06,.56,.9,.905,2.3,2.9,M.screen,scene);bb(0,.35,1.45,2.2,1.95,4.27,M.whiteM,scene);block(0,.63,1.27,4.27);
+  cyl(.06,.07,.2,M.potW,.3,.9,3.0,scene);TG=scene;bush(.3,1.16,3.0,.1,6);})();
+prod('kueche-sandsberg',()=>{const x0=1.73,x1=2.4,z0=2.75,z1=3.85;bb(x0,x1,.72,.745,z0,z1,M.black);for(const [x,z] of [[x0+.04,z0+.04],[x1-.04,z0+.04],[x0+.04,z1-.04],[x1-.04,z1-.04]])bb(x-.015,x+.015,0,.72,z-.015,z+.015,M.black);
+  contact((x0+x1)/2,(z0+z1)/2,.9,1.3,.25);block(x0,x1,z0,z1);candle(2.06,.745,3.3);});
+prod('kueche-nordmansskar',()=>{chairN(1.45,3.0,Math.PI/2);chairN(1.45,3.6,Math.PI/2);});block(1.2,1.7,2.75,3.85);
+prod('kueche-solklint',()=>{solklint(2.06,1.5,3.3,H);});point(2.06,1.35,3.3,7,'#ffb368');
+spot(1.2,2.8,38);
+
+/* ---------------- Flur ---------------- */
+prod('flur-besta',()=>{const x0=3.35,x1=5.15,z0=0,z1=.42,y0=.35,y1=1.0;bb(x0,x1,y0,y1,z0,z1-.02,M.blackbrown);
+  for(let i=0;i<3;i++){const a=x0+i*.6;bb(a+.003,a+.597,y0+.003,y1-.003,z1-.02,z1,M.walnutD);}block(x0,x1,z0,z1);
+  cyl(.07,.09,.28,M.potW,3.6,1.0,.2);bush(3.6,1.42,.2,.12,7);candle(3.95,1.0,.22,.045,.1);});
+prod('flur-ormanas',()=>{bb(3.4,5.1,.34,.345,.05,.36,M.led);glow('l',1.9,.36,'#ffa955',.8,4.25,.18,.006);glow('l',1.8,.45,'#ffa955',.6,4.25,.004,.2,true,0);rect(1.7,.12,5,'#ffb46a',V(4.25,.335,.2),V(4.25,0,.25));});
+prod('flur-rodalm',()=>{for(const [x0,m] of [[3.55,M.art1],[4.45,M.art2]]){bb(x0,x0+.5,1.3,2.0,0,.025,M.black);bb(x0+.02,x0+.48,1.32,1.98,.025,.026,M.white);
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(.36,.5),m);p.position.set(x0+.25,1.65,.027);TG.add(p);}});
+prod('flur-hovet',()=>{bb(2.21,2.99,.06,2.02,1.11,1.17,M.black);bb(2.24,2.96,.09,1.99,1.105,1.11,M.mirror);block(2.21,2.99,1.05,1.17);});
+prod('flur-sandared',()=>{const g=new THREE.Mesh(new THREE.SphereGeometry(.225,32,16),M.beige);g.scale.set(1,.75,1);g.position.set(.68,.17,.86);TG.add(g);contact(.68,.86,.6,.6,.3);block(.45,.91,.63,1.09);});
+prod('flur-otto-paneel',()=>{slatPanel('x',.35,.95,1.17,-1,.02,2.42);for(const x of [.47,.59,.71,.83]){bb(x-.008,x+.008,1.62,1.74,1.12,1.146,M.metal);bb(x-.008,x+.008,1.6,1.62,1.09,1.146,M.metal);}});
+prod('flur-hovolm',()=>{bb(.1,.8,1.62,1.71,0,.02,M.oak);for(let i=0;i<6;i++)cyl(.018,.018,.04,M.oak,.16+i*.116,1.665,.04).rotation.x=Math.PI/2;});
+prod('flur-lohals',()=>{rbb(1.2,3.7,0,.008,.19,.99,.03,M.jute);});
+prod('flur-nymane',()=>{bb(1.9,3.1,H-.03,H,.56,.61,M.anth);for(const x of [2.0,2.5,3.0]){const s=cyl(.035,.035,.09,M.anth,x,H-.12,.585);s.rotation.z=.2;cyl(.025,.025,.004,M.bulb,x,H-.125,.585,TG,16);}});
+spot(1.3,.585,30);spot(4.0,.585,30);
+
+/* ---------------- products of the 5.000-€ plan ---------------- */
+M.klovsta=fab('#a3a29e');M.knisaL=fab('#b9b8b4');
+prod('wohn-friheten',()=>{// FRIHETEN 230x151, Skiftebo dunkelgrau, chaise on the window side
+  const x0=7.73,x1=9.96,zb=-.95,zf=zb+.88,cx=x1-.9,ze=zb+1.51;
+  rbb(x0,x1,.03,.43,zb,zf,.03,M.knisa);rbb(cx,x1,.03,.43,zf-.05,ze,.03,M.knisa);
+  rbb(x0,x1,.4,.86,zb,zb+.2,.04,M.knisa);rbb(x0,x0+.15,.4,.66,zb,zf,.04,M.knisa);
+  rbb(x0+.16,cx-.01,.43,.5,zb+.2,zf,.03,M.knisa);rbb(cx+.01,x1,.43,.5,zb+.2,ze-.01,.03,M.knisa);
+  for(const [a,b] of [[x0+.16,x0+.79],[x0+.81,cx-.01],[cx+.01,x1]]){const c=rbb(a,b,.5,.84,zb+.18,zb+.36,.07,M.knisa);c.rotation.x=-.12;}
+  for(const [x,m,r] of [[8.15,M.brown,.18],[8.5,M.cream,-.12],[9.6,M.greige,.14]]){const p=rbb(x-.22,x+.22,.52,.92,zb+.32,zb+.46,.07,m);p.rotation.set(-.22,r,r*.5);}
+  rbb(x0+.17,x0+.55,.5,.54,zb+.4,zf+.02,.02,M.cream);
+  contact((x0+x1)/2,(zb+zf)/2,2.6,1.2,.4);contact(cx+.45,.3,1.1,1.0,.35);block(x0,x1,zb,zf);block(cx,x1,zf,ze);});
+prod('wohn-otto-paneel3',()=>{slatPanel('x',7.5,9.3,2.13,-1,.02,2.42);});
+prod('wohn-besta180',()=>{const a=7.5,b=9.3,z0=1.688,z1=2.108,y0=.24,y1=.62;bb(a,b,y0,y1,z0+.02,z1,M.blackbrown);
+  for(let i=0;i<3;i++){const x=a+i*.6;bb(x+.003,x+.597,y0+.003,y1-.003,z0,z0+.02,M.walnutD);}contact((a+b)/2,1.92,2.0,.7,.25);block(a,b,z0,z1);});
+prod('wohn-tcl55',()=>{const cx=8.4,z=1.93,y0=.67;bb(cx-.615,cx+.615,y0,y0+.715,z-.012,z+.012,M.screen);bb(cx-.6,cx+.6,y0+.05,y0+.7,z+.012,z+.045,M.black);
+  for(const s of [-1,1])bb(cx+s*.5-.012,cx+s*.5+.012,.62,y0+.02,z-.09,z+.09,M.metal);glow('r',1.9,1.2,'#ff9d55',.2,cx,y0+.38,2.1);});
+prod('wohn-ormanas180',()=>{bb(7.55,9.25,.235,.24,1.8,2.05,M.led);glow('l',1.8,.5,'#ffa955',.75,8.4,.004,1.9,true,0);glow('l',1.8,.3,'#ffa955',.6,8.4,.12,2.1);
+  rect(1.7,.12,6,'#ffb46a',V(8.4,.23,1.92),V(8.4,0,1.92));});
+prod('wohn-borgebyct',()=>{const x=8.4,z=.55;cyl(.35,.35,.025,M.black,x,.395,z,TG,48);for(let i=0;i<3;i++){const a=i*Math.PI*2/3;rod(V(x+Math.cos(a)*.22,.395,z+Math.sin(a)*.22),V(x+Math.cos(a)*.3,0,z+Math.sin(a)*.3),.018,M.black);}
+  contact(x,z,1.0,1.0,.3);block(x-.35,x+.35,z-.35,z+.35);candle(x-.08,.42,z,.04,.1);cyl(.055,.045,.18,M.glassG,x+.1,.42,z+.05);bush(x+.1,.66,z+.05,.09,6);});
+prod('wohn-nordmansskar',()=>{for(const [x,z] of [[5.8,-.18],[7.0,-.18],[6.4,-.78],[6.4,.42]])chairN(x,z,face(x,z,6.4,-.18));});
+prod('wohn-solklint2',()=>{for(const [x,y,z] of [[6.26,1.52,-.12],[6.56,1.55,-.22]])solklint(x,y,z,slopeY(W,x,z));});
+prod('wohn-lokaltag',()=>{rbb(7.0,10.0,0,.012,-.62,1.38,.03,M.rugB);});
+prod('schlaf-ramnefjall',()=>{// RAMNEFJÄLL 174x210, Klovsta grau, headboard on the east wall
+  const x0=3.35,x1=5.45,z0=-3.07,z1=-1.33;rbb(x0,x1-.1,.06,.3,z0,z1,.03,M.klovsta);for(const [x,z] of [[x0+.08,z0+.08],[x0+.08,z1-.08]])cyl(.02,.02,.06,M.black,x,0,z);
+  rbb(x1-.1,x1,.06,1.05,z0,z1,.05,M.klovsta);rbb(x0+.04,x1-.12,.3,.5,z0+.05,z1-.05,.05,M.linen);rbb(x0+.02,x1-.6,.47,.58,z0+.03,z1-.03,.06,M.linen);
+  rbb(x0+.03,x0+.5,.56,.61,z0+.02,z1-.02,.03,M.greige);for(const z of [-2.65,-1.75]){const p=rbb(x1-.5,x1-.18,.46,.8,z-.37,z+.37,.08,M.linen);p.rotation.z=.32;}
+  contact((x0+x1)/2,(z0+z1)/2,2.4,2.1,.4);block(x0,x1,z0,z1);});
+prod('schlaf-radmanso',()=>{const x0=3.55,x1=4.73,z0=-.74,z1=-.1;bb(x0,x1,.06,1.9,z0+.02,z1,M.walnut);bb(x0+.02,x1-.02,0,.06,z0+.04,z1,M.black);
+  const m=(x0+x1)/2;bb(x0+.004,m-.003,.08,1.88,z0,z0+.02,M.walnut);bb(m+.003,x1-.004,.08,1.88,z0,z0+.02,M.walnut);
+  for(const x of [m-.05,m+.05])bb(x-.008,x+.008,.95,1.15,z0-.025,z0,M.metal);contact(m,(z0+z1)/2,1.4,.9,.25);block(x0,x1,z0,z1);});
+prod('arbeit-fridhult',()=>{const x0=2.5,x1=3.26,z0=3.0,z1=4.26;rbb(x0,x1,.02,.4,z0,z1,.04,M.knisaL);rbb(x0,x0+.18,.38,.73,z0,z1,.05,M.knisaL);
+  for(const [a,b] of [[z0,z0+.1],[z1-.1,z1]])rbb(x0,x1,.02,.55,a,b,.03,M.knisaL);
+  for(const [z,m] of [[3.35,M.brown],[3.9,M.greige]]){const p=rbb(2.7,2.84,.44,.76,z-.18,z+.18,.05,m);p.rotation.z=-.2;}contact(2.88,3.63,1.0,1.5,.35);block(x0,x1,z0,z1);});
+prod('arbeit-micke',()=>{const x0=2.76,x1=4.18,z0=5.02,z1=5.52;bb(x0,x1,.72,.75,z0,z1,M.blackbrown);bb(x0,x0+.02,0,.72,z0,z1,M.blackbrown);bb(x1-.02,x1,0,.72,z0,z1,M.blackbrown);
+  bb(x1-.45,x1-.02,.05,.72,z0+.03,z1,M.blackbrown);for(const y of [.2,.45])bb(x1-.43,x1-.04,y,y+.003,z0+.025,z0+.03,M.black);bb(x0,x1,.1,.72,z1-.02,z1,M.blackbrown);
+  contact((x0+x1)/2,(z0+z1)/2,1.6,.7,.25);block(x0,x1,z0,z1);bb(3.25,3.6,.75,.77,5.12,5.37,M.anth);bb(3.26,3.59,.77,.97,5.36,5.37,M.anth);});
+prod('arbeit-millberget',()=>{const g=new THREE.Group();rbb(-.25,.25,.45,.55,-.24,.24,.05,M.vissle,g);rbb(-.23,.23,.62,1.15,-.3,-.2,.08,M.vissle,g);
+  for(const s of [-1,1])bb(s*.24-.015,s*.24+.015,.55,.68,-.12,.12,M.metal,g);bb(-.02,.02,.1,.46,-.02,.02,M.metal,g);
+  for(let i=0;i<5;i++){const a=i/5*Math.PI*2;rod(V(0,.08,0),V(Math.cos(a)*.3,.05,Math.sin(a)*.3),.015,M.metal,g);sph(.024,M.black,Math.cos(a)*.3,.024,Math.sin(a)*.3,g);}
+  g.position.set(3.45,0,4.55);g.rotation.y=Math.PI+.1;TG.add(g);contact(3.45,4.55,.8,.8,.25);});
+prod('x-oldsink',()=>{// existing wall-hung sink and mirror (stay when nothing new is bought)
+  rbb(0,.46,.74,.88,-.8,-.32,.06,M.ceramic);rod(V(.12,.74,-.56),V(.05,.45,-.56),.02,M.chrome);rod(V(.05,.88,-.56),V(.05,.98,-.56),.012,M.chrome);rod(V(.05,.98,-.56),V(.16,.98,-.56),.01,M.chrome);
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.015,48),M.mirror);m.rotation.z=Math.PI/2;m.position.set(.012,1.42,-.56);TG.add(m);block(0,.46,-.8,-.32);});
+prod('flur-nissedal',()=>{bb(2.27,2.92,.5,2.0,1.135,1.17,M.black);bb(2.3,2.89,.53,1.97,1.13,1.135,M.mirror);});
+
+/* ---------------- shadows: everything casts/receives except effects & glass ---------------- */
+scene.traverse(o=>{if(o.isMesh){if(o.userData.fx||o.userData.glass||(o.material&&o.material.transparent)){o.castShadow=false;o.receiveShadow=false;return;}o.castShadow=true;o.receiveShadow=true;}});
+ceilGroup.traverse(o=>{o.receiveShadow=false;});slopeGroup.traverse(o=>{o.receiveShadow=false;});
+
+/* ---------------- mood ---------------- */
+let mood='eve';const LS=.2;
+function setMood(m){mood=m;const day=m==='day';
+  scene.background=new THREE.Color(day?'#cfd6da':'#0e0c0b');
+  hemi.intensity=day?2.2:.3;sun.intensity=day?5:0;
+  for(const L of lamps)L.l.intensity=day?0:L.base*LS*(L.l.isRectAreaLight?2:1);
+  for(const G of glows)G.m.opacity=G.base*(day?.06:1);
+  M.sky.map=day?TX.skyD:TX.skyE;M.sky.needsUpdate=true;M.sky.color.setScalar(day?1.6:1);
+  for(const k in M){const mm=M[k];if(mm.isMeshStandardMaterial)mm.envMapIntensity=day?.8:.12;}M.mirror.envMapIntensity=M.chrome.envMapIntensity=day?1.2:.7;
+  renderer.toneMappingExposure=day?1.05:1.0;renderer.shadowMap.needsUpdate=true;
+  document.getElementById('lEve').setAttribute('aria-pressed',String(!day));document.getElementById('lDay').setAttribute('aria-pressed',String(day));}
+
+/* ---------------- post processing ---------------- */
+let composer=null,gtao=null;
+if(!LOW){composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
+  gtao=new GTAOPass(scene,camera,innerWidth,innerHeight);gtao.updateGtaoMaterial({radius:.35,distanceExponent:1.2,thickness:1,scale:1.1,samples:16});gtao.blendIntensity=.9;composer.addPass(gtao);
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.32,.55,.92));composer.addPass(new OutputPass());}
+
+/* ---------------- walkable areas ---------------- */
+const WALK=[];
+for(const id of ORDER){const R=ROOMS[id];let [a,b,c,d]=[R.x0+.2,R.x1-.2,R.z0+.2,R.z1-.2];
+  if(R.slope){const s=R.slope,need=1.78,m=s.k<need?s.r*(need-s.k)/(H-s.k)+.12:.2;if(s.side==='n')c=R.z0+m;if(s.side==='s')d=R.z1-m;if(s.side==='w')a=R.x0+m;if(s.side==='e')b=R.x1-m;}
+  WALK.push([a,b,c,d]);}
+for(const d of DOORS){if(d.outer)continue;if(d.axis==='x')WALK.push([d.c0+.14,d.c1-.14,d.line-.45,d.line+.45]);else WALK.push([d.line-.45,d.line+.45,d.c0+.14,d.c1-.14]);}
+const RAD=.16;
+let ACTIVE=new Set();
+const walkable=(x,z)=>WALK.some(r=>x>r[0]&&x<r[1]&&z>r[2]&&z<r[3])&&!BLK.some(b=>(!b[4]||ACTIVE.has(b[4]))&&x>b[0]-RAD&&x<b[1]+RAD&&z>b[2]-RAD&&z<b[3]+RAD);
+function roomAt(x,z){if(x>=NICHE.x0-.05&&x<=NICHE.x1&&z>=NICHE.z0&&z<=NICHE.z1)return 'wohn';
+  for(const id of ORDER){const R=ROOMS[id];if(x>=R.x0-.05&&x<=R.x1+.05&&z>=R.z0-.05&&z<=R.z1+.05)return id;}return null;}
+
+/* ---------------- camera ---------------- */
+const st={mode:'walk',pos:V(5.95,EYE,1.7),yaw:0,pitch:-.06,tgt:V(5.2,0,.9),theta:.3,phi:.55,radius:16,room:'wohn',topRoom:null};
+const walkPose=()=>({p:st.pos.clone(),q:new THREE.Quaternion().setFromEuler(new THREE.Euler(st.pitch,st.yaw,0,'YXZ'))});
+function topPose(){const p=V(st.tgt.x+st.radius*Math.sin(st.phi)*Math.sin(st.theta),st.radius*Math.cos(st.phi),st.tgt.z+st.radius*Math.sin(st.phi)*Math.cos(st.theta));
+  return {p,q:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(p,st.tgt,UP))};}
+const applyPose=P=>{camera.position.copy(P.p);camera.quaternion.copy(P.q);};
+let tween=null;const CUT=new THREE.Plane(V(0,-1,0),1.55);
+function tweenTo(P,dur,done){if(reduceMotion||dur<=0){applyPose(P);done&&done();return;}tween={p0:camera.position.clone(),q0:camera.quaternion.clone(),P,t0:performance.now(),dur,done};}
+function fadeTo(fn){const f=document.getElementById('fade');if(reduceMotion){fn();return;}f.style.opacity='1';setTimeout(()=>{fn();requestAnimationFrame(()=>{f.style.opacity='0';});},230);}
+const overviewRadius=()=>{const a=camera.aspect;return Math.min(34,a<1?16/Math.max(a,.42)*.62:16);};
+function setFov(){const a=camera.aspect;camera.fov=st.mode==='walk'?Math.min(96,Math.max(66,2*Math.atan(Math.tan(37*Math.PI/180)/a)*180/Math.PI)):45;camera.updateProjectionMatrix();}
+const lookAtYaw=v=>Math.atan2(-(v.lx-v.x),-(v.lz-v.z));
+function goRoom(id){const R=ROOMS[id];hidePop();
+  if(st.mode==='walk'){const v=R.view;fadeTo(()=>{st.pos.set(v.x,EYE,v.z);st.yaw=lookAtYaw(v);st.pitch=-.08;tween=null;applyPose(walkPose());setRoom(id);});}
+  else{st.topRoom=id;const cx=id==='wohn'?(R.x0+NICHE.x1)/2:(R.x0+R.x1)/2;st.tgt.set(cx,0,(R.z0+R.z1)/2);st.radius=R.top.r*(camera.aspect<1?1.45:1);st.phi=.62;tweenTo(topPose(),900);setRoom(id,true);}}
+function setMode(m){if(m===st.mode)return;st.mode=m;hidePop();
+  document.getElementById('mWalk').setAttribute('aria-pressed',String(m==='walk'));document.getElementById('mTop').setAttribute('aria-pressed',String(m==='top'));
+  ceilGroup.visible=slopeGroup.visible=(m==='walk');renderer.clippingPlanes=m==='top'?[CUT]:[];setFov();
+  if(m==='top'){st.tgt.set(5.25,0,.85);st.radius=overviewRadius();st.phi=.55;st.theta=.3;st.topRoom=null;tweenTo(topPose(),1100);}
+  else{tweenTo(walkPose(),1000);setRoom(roomAt(st.pos.x,st.pos.z)||'flur',true);}
+  updateHint();updateCard();}
+
+/* ---------------- shopping data + UI ---------------- */
+let DATA=null;const PROD={};
+const eur=v=>v.toLocaleString('de-DE',{minimumFractionDigits:v%1?2:0,maximumFractionDigits:2})+' €';
+const roomsNav=document.getElementById('rooms');
+function roomSum(id){const r=DATA&&DATA.rooms.find(x=>x.id===id);return r?r.items.reduce((s,i)=>s+i.qty*i.price,0):0;}
+function buildChips(){roomsNav.innerHTML='';for(const id of ORDER){const R=ROOMS[id];const b=document.createElement('button');b.className='chip glass';b.dataset.id=id;b.setAttribute('aria-pressed','false');
+  b.innerHTML=`<span class="sw" style="background:${R.color}"></span>${R.name}<small>${DATA?eur(Math.round(roomSum(id))):R.area+' m²'}</small>`;b.addEventListener('click',()=>{hideHint();goRoom(id);});roomsNav.appendChild(b);}}
+buildChips();
+function setRoom(id,force){if(!id||(id===st.room&&!force))return;st.room=id;updateCard();}
+function updateCard(){const R=ROOMS[st.room]||ROOMS.wohn;document.getElementById('rName').textContent=R.name;
+  document.getElementById('rDims').textContent=R.dims+(DATA?' · '+eur(Math.round(roomSum(st.room))):'');
+  const r=DATA&&DATA.rooms.find(x=>x.id===st.room);
+  const names=r?r.items.filter(i=>!/Wandschiene|Lattenrost|Bettdecke|Kopfkissen|Bettwäsche|Zwischenbausatz|Kissenbezug|Plaid|Rollo|Badematte|Duschvorhang|Laterne/.test(i.name)).map(i=>i.name.split(/ \(|,/)[0]):[];
+  document.getElementById('rItems').textContent=names.slice(0,5).join(' · ')+(names.length>5?` · +${names.length-5} weitere`:'');
+  if(st.room==='kueche'&&r)document.getElementById('rItems').textContent+=' · Küchenzeile ist schon da';
+  document.getElementById('enter').hidden=!(st.mode==='top'&&st.topRoom);
+  for(const b of roomsNav.children)b.setAttribute('aria-pressed',String(b.dataset.id===st.room));}
+document.getElementById('enter').addEventListener('click',()=>{const v=ROOMS[st.topRoom||st.room].view;st.pos.set(v.x,EYE,v.z);st.yaw=lookAtYaw(v);st.pitch=-.08;setMode('walk');});
+document.getElementById('mWalk').addEventListener('click',()=>setMode('walk'));
+document.getElementById('mTop').addEventListener('click',()=>setMode('top'));
+document.getElementById('lEve').addEventListener('click',()=>setMood('eve'));
+document.getElementById('lDay').addEventListener('click',()=>setMood('day'));
+const hint=document.getElementById('hint');let hintHidden=false;
+function hideHint(){if(!hintHidden){hintHidden=true;setTimeout(()=>hint.classList.add('off'),2200);}}
+function updateHint(){hint.textContent=st.mode==='walk'?'Ziehen zum Umschauen · Boden antippen zum Hinlaufen · Möbel antippen für Preis & Link':'Ziehen zum Drehen · Zoomen mit Mausrad oder zwei Fingern · Raum antippen';hint.classList.remove('off');hintHidden=false;}
+// product popup
+const pop=document.getElementById('pop');
+function showPop(pid){const it=PROD[pid];if(!it)return;document.getElementById('pShop').textContent=it.shop;document.getElementById('pName').textContent=it.name;
+  document.getElementById('pVar').textContent=it.variant;document.getElementById('pPrice').textContent=(it.qty>1?it.qty+' × '+eur(it.price)+' = ':'')+eur(Math.round(it.qty*it.price*100)/100);
+  const a=document.getElementById('pLink');a.href=it.url;a.textContent='Bei '+it.shop+' ansehen ↗';pop.hidden=false;}
+function hidePop(){pop.hidden=true;}
+document.getElementById('popX').addEventListener('click',hidePop);
+// drawer
+const drawer=document.getElementById('drawer');
+document.getElementById('listBtn').addEventListener('click',()=>{drawer.hidden=false;hidePop();document.getElementById('dClose').focus();});
+document.getElementById('dClose').addEventListener('click',()=>{drawer.hidden=true;});
+addEventListener('keydown',e=>{if(e.key==='Escape'){drawer.hidden=true;hidePop();}});
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const TAG={IKEA:'ikea',MediaMarkt:'mm',Saturn:'saturn',POCO:'poco',OTTO:'otto',Kabs:'kabs'};
+function fillData(j){DATA=j;let tot=0;const byShop={},B=j.budget||9000;for(const k in PROD)delete PROD[k];
+  for(const r of j.rooms)for(const i of r.items){PROD[i.id]=i;const v=i.qty*i.price;tot+=v;byShop[i.shop]=(byShop[i.shop]||0)+v;}
+  const ship=j.extra.reduce((s,e)=>s+e.price,0),all=tot+ship,rest=B-all;
+  document.getElementById('sumTop').textContent=eur(Math.round(all));document.getElementById('restTop').textContent=eur(Math.round(rest))+' übrig';
+  document.getElementById('shopsTop').textContent=Object.keys(byShop).join(' · ')+' · Preise vom '+j.stand;document.getElementById('maxTop').textContent=eur(B);document.getElementById('h1').textContent='Unsere Wohnung unter '+eur(B);
+  document.getElementById('barFill').style.width=Math.min(100,all/B*100)+'%';document.getElementById('listBtn').textContent='Einkaufsliste · '+eur(Math.round(all));
+  document.getElementById('dMeta').textContent=`Budget ${eur(B)} · ${j.rooms.reduce((s,r)=>s+r.items.length,0)} Produkte · Preise vom ${j.stand}`;
+  let h='';for(const r of j.rooms){const R=ROOMS[r.id];h+=`<section class="grp"><h3>${R.name}<span>${eur(Math.round(roomSum(r.id)*100)/100)}</span></h3>`;
+    for(const i of r.items)h+=`<div class="it"><div class="n"><span class="tag ${TAG[i.shop]||'ikea'}">${esc(i.shop)}</span><b>${esc(i.name)}</b><small>${esc(i.variant)}</small></div>
+      <div class="p">${eur(Math.round(i.qty*i.price*100)/100)}${i.qty>1?`<small>${i.qty} × ${eur(i.price)}</small>`:''}</div><a href="${esc(i.url)}" target="_blank" rel="noopener">Im Shop ansehen ↗</a></div>`;
+    h+='</section>';}
+  h+='<div class="sum">'+Object.entries(byShop).sort((p,q)=>q[1]-p[1]).map(([s,v])=>`<div><span>${esc(s)}</span><span>${eur(Math.round(v*100)/100)}</span></div>`).join('');
+  for(const e of j.extra)h+=`<div><span>${esc(e.name)}</span><span>${eur(e.price)}</span></div>`;
+  h+=`<div class="tot"><span>Gesamt</span><span>${eur(Math.round(all*100)/100)}</span></div><div class="rest"><span>Noch frei bis ${eur(B)}</span><span>${eur(Math.round(rest*100)/100)}</span></div></div>
+   <p class="note">Preise wie am ${j.stand} in den Onlineshops angezeigt; viele sind Black-Friday-Angebote und können sich ändern. Lieferkosten sind geschätzt, nur POCO nennt eine feste Staffel. Die Küchenzeile, Badewanne, WC und die grüne Wand sind schon in der Wohnung und deshalb nicht in der Liste.</p>`;
+  document.getElementById('dList').innerHTML=h;buildChips();updateCard();}
+// budget plans: each shows only its own products in 3D
+const PLANS={};let plan='5000';
+function applyPlan(p){if(!PLANS[p])return;plan=p;const j=PLANS[p];
+  ACTIVE=new Set(j.rooms.flatMap(r=>r.items.map(i=>i.id)));if(p==='5000')ACTIVE.add('x-oldsink');
+  for(const pid in REG){const on=ACTIVE.has(pid);for(const o of REG[pid])o.visible=on;}
+  renderer.shadowMap.needsUpdate=true;hidePop();
+  document.getElementById('b5').setAttribute('aria-pressed',String(p==='5000'));document.getElementById('b9').setAttribute('aria-pressed',String(p==='9000'));
+  try{localStorage.setItem('wohnung-plan',p);}catch(e){}
+  fillData(j);}
+for(const pid in REG)for(const o of REG[pid])o.visible=false;
+document.getElementById('b5').addEventListener('click',()=>applyPlan('5000'));
+document.getElementById('b9').addEventListener('click',()=>applyPlan('9000'));
+Promise.resolve([{
+ "stand": "26.11.2026",
+ "budget": 5000,
+ "rooms": [
+  {
+   "id": "wohn",
+   "items": [
+    {
+     "id": "wohn-friheten",
+     "shop": "IKEA",
+     "name": "FRIHETEN Eckbettsofa mit Bettkasten",
+     "variant": "Skiftebo dunkelgrau · 230 × 151 cm",
+     "qty": 1,
+     "price": 499,
+     "url": "https://www.ikea.com/de/de/p/friheten-eckbettsofa-mit-bettkasten-skiftebo-dunkelgrau-s39216754/"
+    },
+    {
+     "id": "wohn-tcl55",
+     "shop": "MediaMarkt",
+     "name": "TCL 55C6K QLED-TV, 55 Zoll",
+     "variant": "139 cm Diagonale, 144 Hz",
+     "qty": 1,
+     "price": 549,
+     "url": "https://www.mediamarkt.de/de/product/_tcl-55c6k-fernseher-flat-55-zoll-139-cm-uhd-4k-smart-tv-155631745.html"
+    },
+    {
+     "id": "wohn-otto-paneel3",
+     "shop": "OTTO",
+     "name": "BENEDO Akustikpaneel Holzlamellen (TV-Wand)",
+     "variant": "Nussbaum-Optik · 240 × 60 cm, 3 Stück = 1,80 m hinter dem TV",
+     "qty": 3,
+     "price": 99,
+     "url": "https://www.otto.de/p/benedo-moebel-wandpaneel-akustikpaneele-nussbaum-eichenholz-optik-240-60x2-2-cm-S0NBV0PZ/"
+    },
+    {
+     "id": "wohn-besta180",
+     "shop": "IKEA",
+     "name": "BESTÅ TV-Bank mit Türen",
+     "variant": "schwarzbraun / Lappviken Nussbaumnachbildung · 180 × 42 × 38 cm",
+     "qty": 1,
+     "price": 145,
+     "url": "https://www.ikea.com/de/de/p/besta-tv-bank-mit-tueren-schwarzbraun-lappviken-braun-nussbaumnachbildung-s09612171/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ Wandschiene (zum Aufhängen)",
+     "variant": "60 cm",
+     "qty": 3,
+     "price": 5,
+     "url": "https://www.ikea.com/de/de/p/besta-wandschiene-silberfarben-70488318/",
+     "id": "wohn-besta-2"
+    },
+    {
+     "id": "wohn-borgebyct",
+     "shop": "IKEA",
+     "name": "BORGEBY Couchtisch",
+     "variant": "schwarz · Ø 70 cm",
+     "qty": 1,
+     "price": 129,
+     "url": "https://www.ikea.com/de/de/p/borgeby-couchtisch-schwarz-30500355/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LISABO Esstisch rund",
+     "variant": "schwarz/Eschenfurnier · Ø 105 cm",
+     "qty": 1,
+     "price": 139,
+     "url": "https://www.ikea.com/de/de/p/lisabo-tisch-schwarz-eschenfurnier-50416501/",
+     "id": "wohn-lisabo"
+    },
+    {
+     "id": "wohn-nordmansskar",
+     "shop": "IKEA",
+     "name": "NORDMANSSKÄR Stuhl",
+     "variant": "schwarz / Tonerud grau",
+     "qty": 4,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nordmansskaer-stuhl-schwarz-tonerud-grau-s99618215/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte (über dem Esstisch)",
+     "variant": "Messing / Klarglas grau",
+     "qty": 2,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "wohn-solklint2"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenleuchte LED",
+     "variant": "anthrazit · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenleuchte-led-anthrazit-30526671/",
+     "id": "wohn-nymane"
+    },
+    {
+     "id": "wohn-lokaltag",
+     "shop": "IKEA",
+     "name": "LOKALTÅG Teppich Kurzflor",
+     "variant": "beige/grau · 200 × 300 cm",
+     "qty": 1,
+     "price": 89.99,
+     "url": "https://www.ikea.com/de/de/p/lokaltag-teppich-kurzflor-beige-grau-00623230/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ORMANÄS LED-Lichtleiste (hinter TV-Bank)",
+     "variant": "4 m, dimmbar",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/ormanaes-lichtleiste-led-smart-kabellos-dimmbar-farb-und-weissspektrum-40497395/",
+     "id": "wohn-ormanas180"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FEJKA Olivenbaum, künstlich",
+     "variant": "Topf 19 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/fejka-topfpflanze-kuenstlich-drinnen-draussen-olivenbaum-gruen-40617699/",
+     "id": "wohn-fejka"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "dunkelbraun + hellbeige · 50 × 50 cm",
+     "qty": 4,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-dunkelbraun-90636025/",
+     "id": "wohn-sanela"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VALLKRASSING Plaid",
+     "variant": "elfenbeinweiß",
+     "qty": 1,
+     "price": 9.99,
+     "url": "https://www.ikea.com/de/de/p/vallkrassing-plaid-elfenbeinweiss-20570928/",
+     "id": "wohn-vallkrassing"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "id": "wohn-rollo"
+    }
+   ]
+  },
+  {
+   "id": "schlaf",
+   "items": [
+    {
+     "id": "schlaf-ramnefjall",
+     "shop": "IKEA",
+     "name": "RAMNEFJÄLL Polsterbett",
+     "variant": "Klovsta grau/weiß, inkl. LURÖY-Lattenrost · 160 × 200 cm",
+     "qty": 1,
+     "price": 229,
+     "url": "https://www.ikea.com/de/de/p/ramnefjaell-bettgestell-gepolstert-klovsta-grau-weiss-luroey-s59552754/"
+    },
+    {
+     "id": "schlaf-vesteroy",
+     "shop": "IKEA",
+     "name": "VESTERÖY Taschenfederkernmatratze",
+     "variant": "mittelfest · 160 × 200 cm",
+     "qty": 1,
+     "price": 239,
+     "url": "https://www.ikea.com/de/de/p/vesteroey-taschenfederkernmatratze-mittelfest-hellblau-40450623/"
+    },
+    {
+     "id": "schlaf-radmanso",
+     "shop": "IKEA",
+     "name": "RÅDMANSÖ Kleiderschrank",
+     "variant": "braun Nussbaumnachbildung · 118 × 64 × 190 cm",
+     "qty": 1,
+     "price": 299,
+     "url": "https://www.ikea.com/de/de/p/radmansoe-kleiderschrank-braun-nussbaumnachbildung-70593606/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STORKLINTA Kommode als Nachttisch",
+     "variant": "dunkelbraun Eichenachbildung · 40 × 50 × 53 cm",
+     "qty": 2,
+     "price": 59.99,
+     "url": "https://www.ikea.com/de/de/p/storklinta-kommode-mit-2-schubladen-dunkelbraun-eichenachbildung-60631411/",
+     "id": "schlaf-storklinta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Tischleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 2,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-tischleuchte-messing-klarglas-grau-70464275/",
+     "id": "schlaf-solklint-tl"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VINDKAST Hängeleuchte",
+     "variant": "weiß · 50 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/vindkast-haengeleuchte-weiss-20450520/",
+     "id": "schlaf-vindkast"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ÄRENDE Teppich Langflor",
+     "variant": "elfenbeinweiß · 160 × 230 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/aerende-teppich-langflor-elfenbeinweiss-20576435/",
+     "id": "schlaf-arende"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SÄFFEROT Bettdecke, warm",
+     "variant": "240 × 220 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/saefferot-decke-warm-80565721/",
+     "id": "schlaf-safferot"
+    },
+    {
+     "shop": "IKEA",
+     "name": "PILSPINNARE Kopfkissen",
+     "variant": "80 × 80 cm",
+     "qty": 2,
+     "price": 16.99,
+     "url": "https://www.ikea.com/de/de/p/pilspinnare-kissen-niedrig-70587144/",
+     "id": "schlaf-pilspinnare"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BIRGITTARÖNN Bettwäsche-Set",
+     "variant": "weiß · 240 × 220 cm",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/birgittaroenn-bettwaesche-set-3-teilig-weiss-10636675/",
+     "id": "schlaf-birgittaronn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "id": "schlaf-rollo"
+    }
+   ]
+  },
+  {
+   "id": "arbeit",
+   "items": [
+    {
+     "id": "arbeit-fridhult",
+     "shop": "IKEA",
+     "name": "FRIDHULT Bettsofa (für Gäste)",
+     "variant": "Knisa hellgrau · 126 × 76 cm, Liegefläche 119 × 202 cm",
+     "qty": 1,
+     "price": 199,
+     "url": "https://www.ikea.com/de/de/p/fridhult-bettsofa-knisa-hellgrau-70351725/"
+    },
+    {
+     "id": "arbeit-micke",
+     "shop": "IKEA",
+     "name": "MICKE Schreibtisch",
+     "variant": "schwarzbraun · 142 × 50 cm",
+     "qty": 1,
+     "price": 149.99,
+     "url": "https://www.ikea.com/de/de/p/micke-schreibtisch-schwarzbraun-60244745/"
+    },
+    {
+     "id": "arbeit-millberget",
+     "shop": "IKEA",
+     "name": "MILLBERGET Drehstuhl",
+     "variant": "Murum schwarz",
+     "qty": 1,
+     "price": 99.99,
+     "url": "https://www.ikea.com/de/de/p/millberget-drehstuhl-murum-schwarz-70489394/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FORSÅ Arbeitsleuchte",
+     "variant": "schwarz",
+     "qty": 1,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-vernickelt-80146763/",
+     "id": "arbeit-forsa"
+    }
+   ]
+  },
+  {
+   "id": "bad",
+   "items": [
+    {
+     "shop": "Saturn",
+     "name": "BOSCH WAN282ECO5 Waschmaschine Serie 4",
+     "variant": "8 kg, 1400 U/min, A",
+     "qty": 1,
+     "price": 444,
+     "url": "https://www.saturn.de/de/product/_bosch-wan282eco5-serie-4-waschmaschine-8-kg-1400-umin-a-2891780.html",
+     "id": "bad-bosch"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYSJÖN Hochschrank (neben den Geräten)",
+     "variant": "weiß · 30 × 190 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/nysjoen-hochschrank-weiss-20470815/",
+     "id": "bad-nysjon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "TOFTBO Badematte",
+     "variant": "60 × 120 cm",
+     "qty": 1,
+     "price": 12.99,
+     "url": "https://www.ikea.com/de/de/p/toftbo-badematte-grauweiss-meliert-40610363/",
+     "id": "bad-toftbo"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LUDDHAGTORN Duschvorhang",
+     "variant": "grau · 180 × 200 cm",
+     "qty": 1,
+     "price": 5.99,
+     "url": "https://www.ikea.com/de/de/p/luddhagtorn-duschvorhang-grau-30613692/",
+     "id": "bad-luddhagtorn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BORRBY Laterne",
+     "variant": "schwarz · 28 cm",
+     "qty": 2,
+     "price": 7.99,
+     "url": "https://www.ikea.com/de/de/p/borrby-laterne-fuer-blockkerze-drinnen-draussen-schwarz-10156109/",
+     "id": "bad-borrby"
+    }
+   ]
+  },
+  {
+   "id": "flur",
+   "items": [
+    {
+     "id": "flur-nissedal",
+     "shop": "IKEA",
+     "name": "NISSEDAL Spiegel",
+     "variant": "schwarz · 65 × 150 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/nissedal-spiegel-schwarz-70320319/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANDARED Pouf",
+     "variant": "beige · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/sandared-pouf-beige-00385314/",
+     "id": "flur-sandared"
+    },
+    {
+     "shop": "IKEA",
+     "name": "HÖVOLM Leiste mit 6 Knöpfen (Garderobe)",
+     "variant": "Eiche",
+     "qty": 1,
+     "price": 14.99,
+     "url": "https://www.ikea.com/de/de/p/hoevolm-leiste-mit-6-knoepfen-eiche-10500059/",
+     "id": "flur-hovolm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "RÖDALM Bilderrahmen",
+     "variant": "schwarz · 50 × 70 cm",
+     "qty": 2,
+     "price": 15.99,
+     "url": "https://www.ikea.com/de/de/p/roedalm-rahmen-schwarz-70548925/",
+     "id": "flur-rodalm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenspot, 3 Spots",
+     "variant": "anthrazit",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenspot-3-spots-anthrazit-90415081/",
+     "id": "flur-nymane"
+    }
+   ]
+  },
+  {
+   "id": "kueche",
+   "items": [
+    {
+     "shop": "IKEA",
+     "name": "SANDSBERG Tisch",
+     "variant": "schwarz · 110 × 67 cm",
+     "qty": 1,
+     "price": 49,
+     "url": "https://www.ikea.com/de/de/p/sandsberg-tisch-schwarz-s29420393/",
+     "id": "kueche-sandsberg"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NORDMANSSKÄR Stuhl",
+     "variant": "schwarz / Tonerud grau",
+     "qty": 2,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nordmansskaer-stuhl-schwarz-tonerud-grau-s99618215/",
+     "id": "kueche-nordmansskar"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "kueche-solklint"
+    }
+   ]
+  }
+ ],
+ "extra": [
+  {
+   "name": "Lieferung IKEA (Speditionsware, ca.)",
+   "price": 79
+  },
+  {
+   "name": "Versand OTTO (ca.)",
+   "price": 39.95
+  },
+  {
+   "name": "Versand Saturn Waschmaschine (ca.)",
+   "price": 39.9
+  }
+ ]
+},{
+ "stand": "26.11.2026",
+ "rooms": [
+  {
+   "id": "wohn",
+   "items": [
+    {
+     "id": "wohn-poco-sofa",
+     "shop": "POCO",
+     "name": "Ecksofa Rise L mit Bettfunktion und Bettkasten",
+     "variant": "anthrazit Microfaser · 245 × 155 cm, Ottomane links oder rechts",
+     "qty": 1,
+     "price": 499.99,
+     "url": "https://www.poco.de/p/ecksofa-mit-bettfunktion-und-bettkasten-anthrazit-microfaser-b-t-ca-245x155-cm-509599501"
+    },
+    {
+     "shop": "MediaMarkt",
+     "name": "TCL 65C7L Mini-LED TV, 65 Zoll",
+     "variant": "164 cm Diagonale",
+     "qty": 1,
+     "price": 849,
+     "url": "https://www.mediamarkt.de/de/product/_tcl-65c7l-mini-led-tv-flat-65-zoll-1639-cm-hdr-4k-3042105.html",
+     "id": "wohn-tcl"
+    },
+    {
+     "id": "wohn-otto-paneel",
+     "shop": "OTTO",
+     "name": "BENEDO Akustikpaneel Holzlamellen (TV-Wand)",
+     "variant": "Nussbaum-Optik · 240 × 60 cm, 4 Stück = 2,40 m Wand",
+     "qty": 4,
+     "price": 99,
+     "url": "https://www.otto.de/p/benedo-moebel-wandpaneel-akustikpaneele-nussbaum-eichenholz-optik-240-60x2-2-cm-S0NBV0PZ/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ TV-Bank mit Türen",
+     "variant": "schwarzbraun / Lappviken Nussbaumnachbildung · 240 × 42 × 38 cm",
+     "qty": 1,
+     "price": 215,
+     "url": "https://www.ikea.com/de/de/p/besta-tv-bank-mit-tueren-schwarzbraun-lappviken-braun-nussbaumnachbildung-s39612155/",
+     "id": "wohn-besta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ Wandschiene (zum Aufhängen)",
+     "variant": "60 cm",
+     "qty": 4,
+     "price": 5,
+     "url": "https://www.ikea.com/de/de/p/besta-wandschiene-silberfarben-70488318/",
+     "id": "wohn-besta-2"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STOCKHOLM 2025 Couchtisch",
+     "variant": "Eichenfurnier dunkelbraun · Ø 90 cm",
+     "qty": 1,
+     "price": 199,
+     "url": "https://www.ikea.com/de/de/p/stockholm-2025-couchtisch-eichenfurnier-dunkelbraun-50586555/",
+     "id": "wohn-stockholm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BORGEBY Beistelltisch",
+     "variant": "schwarz · Ø 46 cm",
+     "qty": 1,
+     "price": 79.99,
+     "url": "https://www.ikea.com/de/de/p/borgeby-beistelltisch-schwarz-40619882/",
+     "id": "wohn-borgeby"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LISABO Esstisch rund",
+     "variant": "schwarz/Eschenfurnier · Ø 105 cm",
+     "qty": 1,
+     "price": 139,
+     "url": "https://www.ikea.com/de/de/p/lisabo-tisch-schwarz-eschenfurnier-50416501/",
+     "id": "wohn-lisabo"
+    },
+    {
+     "shop": "IKEA",
+     "name": "TOSSBERG Stuhl",
+     "variant": "Metall schwarz / Gunnared dunkelgrau",
+     "qty": 4,
+     "price": 79.99,
+     "url": "https://www.ikea.com/de/de/p/tossberg-stuhl-metall-schwarz-gunnared-dunkelgrau-10582644/",
+     "id": "wohn-tossberg"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte (über dem Esstisch)",
+     "variant": "Messing / Klarglas grau",
+     "qty": 3,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "wohn-solklint"
+    },
+    {
+     "shop": "IKEA",
+     "name": "KUNGSHULT / SKAFTET Bogenleuchte",
+     "variant": "weiß/schwarz",
+     "qty": 1,
+     "price": 89.99,
+     "url": "https://www.ikea.com/de/de/p/kungshult-skaftet-standleuchte-bogenfoermig-weiss-schwarz-s19416018/",
+     "id": "wohn-kungshult"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenleuchte LED",
+     "variant": "anthrazit · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenleuchte-led-anthrazit-30526671/",
+     "id": "wohn-nymane"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STOENSE Teppich Kurzflor",
+     "variant": "elfenbeinweiß · 200 × 300 cm",
+     "qty": 1,
+     "price": 139,
+     "url": "https://www.ikea.com/de/de/p/stoense-teppich-kurzflor-elfenbeinweiss-20426808/",
+     "id": "wohn-stoense"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ORMANÄS LED-Lichtleiste (hinter TV-Bank)",
+     "variant": "4 m, dimmbar",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/ormanaes-lichtleiste-led-smart-kabellos-dimmbar-farb-und-weissspektrum-40497395/",
+     "id": "wohn-ormanas"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FEJKA Olivenbaum, künstlich",
+     "variant": "Topf 19 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/fejka-topfpflanze-kuenstlich-drinnen-draussen-olivenbaum-gruen-40617699/",
+     "id": "wohn-fejka"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STRELITZIA Pflanze",
+     "variant": "ca. 140 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/strelitzia-pflanze-strelitzie-20466253/",
+     "id": "wohn-strelitzia"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "dunkelbraun + hellbeige · 50 × 50 cm",
+     "qty": 4,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-dunkelbraun-90636025/",
+     "id": "wohn-sanela"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VALLKRASSING Plaid",
+     "variant": "elfenbeinweiß",
+     "qty": 1,
+     "price": 9.99,
+     "url": "https://www.ikea.com/de/de/p/vallkrassing-plaid-elfenbeinweiss-20570928/",
+     "id": "wohn-vallkrassing"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "id": "wohn-rollo"
+    }
+   ]
+  },
+  {
+   "id": "schlaf",
+   "items": [
+    {
+     "shop": "IKEA",
+     "name": "IDANÄS Polsterbett mit Aufbewahrung",
+     "variant": "Gunnared dunkelgrau · 160 × 200 cm",
+     "qty": 1,
+     "price": 549,
+     "url": "https://www.ikea.com/de/de/p/idanaes-bettgestell-gepolstert-mit-aufbew-gunnared-dunkelgrau-10458970/",
+     "id": "schlaf-idanas"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LURÖY Lattenrost",
+     "variant": "160 × 200 cm",
+     "qty": 1,
+     "price": 50,
+     "url": "https://www.ikea.com/de/de/p/luroey-federholzrahmen-s39481357/",
+     "id": "schlaf-luroy"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VALEVÅG Taschenfederkernmatratze",
+     "variant": "mittelfest · 160 × 200 cm",
+     "qty": 1,
+     "price": 279,
+     "url": "https://www.ikea.com/de/de/p/valevag-taschenfederkernmatratze-fest-ueberzug-waschbar-hellblau-40546414/",
+     "id": "schlaf-valevag"
+    },
+    {
+     "shop": "IKEA",
+     "name": "PAX / MEHAMN Kleiderschrank mit Schiebetüren",
+     "variant": "dunkelgrau / Nussbaum · 150 × 66 × 201 cm",
+     "qty": 1,
+     "price": 609,
+     "url": "https://www.ikea.com/de/de/p/pax-mehamn-kleiderschrank-mit-schiebetueren-dunkelgrau-schwarz-doppelseitig-nussbaum-s19608748/",
+     "id": "schlaf-pax"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STORKLINTA Kommode als Nachttisch",
+     "variant": "dunkelbraun Eichenachbildung · 40 × 50 × 53 cm",
+     "qty": 2,
+     "price": 59.99,
+     "url": "https://www.ikea.com/de/de/p/storklinta-kommode-mit-2-schubladen-dunkelbraun-eichenachbildung-60631411/",
+     "id": "schlaf-storklinta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Tischleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 2,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-tischleuchte-messing-klarglas-grau-70464275/",
+     "id": "schlaf-solklint-tl"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VINDKAST Hängeleuchte",
+     "variant": "weiß · 50 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/vindkast-haengeleuchte-weiss-20450520/",
+     "id": "schlaf-vindkast"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ÄRENDE Teppich Langflor",
+     "variant": "elfenbeinweiß · 160 × 230 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/aerende-teppich-langflor-elfenbeinweiss-20576435/",
+     "id": "schlaf-arende"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SÄFFEROT Bettdecke, warm",
+     "variant": "240 × 220 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/saefferot-decke-warm-80565721/",
+     "id": "schlaf-safferot"
+    },
+    {
+     "shop": "IKEA",
+     "name": "PILSPINNARE Kopfkissen",
+     "variant": "80 × 80 cm",
+     "qty": 2,
+     "price": 16.99,
+     "url": "https://www.ikea.com/de/de/p/pilspinnare-kissen-niedrig-70587144/",
+     "id": "schlaf-pilspinnare"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BIRGITTARÖNN Bettwäsche-Set",
+     "variant": "weiß · 240 × 220 cm",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/birgittaroenn-bettwaesche-set-3-teilig-weiss-10636675/",
+     "id": "schlaf-birgittaronn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "id": "schlaf-rollo"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FEJKA Kentiapalme, künstlich",
+     "variant": "Topf 21 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/fejka-topfpflanze-kuenstlich-drinnen-draussen-kentiapalme-60610606/",
+     "id": "schlaf-fejka"
+    }
+   ]
+  },
+  {
+   "id": "arbeit",
+   "items": [
+    {
+     "id": "arbeit-kabs-seja",
+     "shop": "Kabs",
+     "name": "Schlafsofa Seja mit Bettkasten (für Gäste)",
+     "variant": "Stoff 700 anthrazit · 190 × 73 × 72 cm",
+     "qty": 1,
+     "price": 298,
+     "url": "https://www.kabs.de/p/schlafsofa-seja-inklusive-schlaffunktion-und-stauraum-86ffabd07bf2490ca3b5b781640c1281"
+    },
+    {
+     "shop": "IKEA",
+     "name": "MITTZON Schreibtisch",
+     "variant": "Nussbaumfurnier/schwarz · 120 × 60 cm",
+     "qty": 1,
+     "price": 189,
+     "url": "https://www.ikea.com/de/de/p/mittzon-schreibtisch-nussbaumfurnier-schwarz-s99526013/",
+     "id": "arbeit-mittzon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "MARKUS Drehstuhl",
+     "variant": "Vissle dunkelgrau",
+     "qty": 1,
+     "price": 149,
+     "url": "https://www.ikea.com/de/de/p/markus-drehstuhl-vissle-dunkelgrau-70261150/",
+     "id": "arbeit-markus"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ Aufbewahrung mit Türen",
+     "variant": "schwarzbraun / Nussbaumnachbildung · 120 × 42 × 75 cm",
+     "qty": 1,
+     "price": 175,
+     "url": "https://www.ikea.com/de/de/p/besta-aufbewahrung-mit-tueren-schwarzbraun-lappviken-stubbarp-braun-nussbaumnachbildung-s49612348/",
+     "id": "arbeit-besta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FORSÅ Arbeitsleuchte",
+     "variant": "schwarz",
+     "qty": 1,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-vernickelt-80146763/",
+     "id": "arbeit-forsa"
+    },
+    {
+     "shop": "IKEA",
+     "name": "MORUM Teppich flach gewebt",
+     "variant": "beige · 160 × 230 cm",
+     "qty": 1,
+     "price": 69.99,
+     "url": "https://www.ikea.com/de/de/p/morum-teppich-flach-gewebt-drin-draussen-beige-20203563/",
+     "id": "arbeit-morum"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FEJKA Birkenfeige, künstlich",
+     "variant": "Topf 23 cm",
+     "qty": 1,
+     "price": 59.99,
+     "url": "https://www.ikea.com/de/de/p/fejka-topfpflanze-kuenstlich-drinnen-draussen-birkenfeige-10610604/",
+     "id": "arbeit-fejka"
+    }
+   ]
+  },
+  {
+   "id": "bad",
+   "items": [
+    {
+     "shop": "Saturn",
+     "name": "BOSCH WAN282ECO5 Waschmaschine Serie 4",
+     "variant": "8 kg, 1400 U/min, A",
+     "qty": 1,
+     "price": 444,
+     "url": "https://www.saturn.de/de/product/_bosch-wan282eco5-serie-4-waschmaschine-8-kg-1400-umin-a-2891780.html",
+     "id": "bad-bosch"
+    },
+    {
+     "shop": "MediaMarkt",
+     "name": "SIEMENS WT45HV0EM Wärmepumpentrockner iQ300",
+     "variant": "8 kg",
+     "qty": 1,
+     "price": 449,
+     "url": "https://www.mediamarkt.de/de/product/_siemens-wt45hv0em-warmepumpentrockner-iq300-80-kg-weiss-2989405.html",
+     "id": "bad-siemens"
+    },
+    {
+     "shop": "MediaMarkt",
+     "name": "XAVAX Zwischenbausatz (Trockner auf Waschmaschine)",
+     "variant": "60 × 60 cm",
+     "qty": 1,
+     "price": 40.06,
+     "url": "https://www.mediamarkt.de/de/product/_xavax-110815-zwischenbausatz-1sch-zwischenbausatz-fur-waschmaschinetrockner-600-mm-106574809.html",
+     "id": "bad-xavax"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ÄNGSJÖN Waschbeckenschrank",
+     "variant": "braun Eichenachbildung · 60 × 48 × 63 cm",
+     "qty": 1,
+     "price": 179,
+     "url": "https://www.ikea.com/de/de/p/aengsjoen-waschbeckenschrank-mit-schubladen-eichenachbildung-80535084/",
+     "id": "bad-angsjon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ORRSJÖN Waschbecken mit Siphon",
+     "variant": "weiß · 62 × 49 cm",
+     "qty": 1,
+     "price": 100,
+     "url": "https://www.ikea.com/de/de/p/orrsjoen-waschbecken-mit-siphon-weiss-s29516753/",
+     "id": "bad-orrsjon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SALJEN Mischbatterie",
+     "variant": "schwarz",
+     "qty": 1,
+     "price": 20,
+     "url": "https://www.ikea.com/de/de/p/saljen-mischbatterie-waschbecken-schwarz-40385492/",
+     "id": "bad-saljen"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FAXÄLVEN Spiegel mit Beleuchtung",
+     "variant": "rund · Ø 80 cm",
+     "qty": 1,
+     "price": 159,
+     "url": "https://www.ikea.com/de/de/p/faxaelven-spiegel-mit-beleuchtung-s29516705/",
+     "id": "bad-faxalven"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYSJÖN Hochschrank (neben den Geräten)",
+     "variant": "weiß · 30 × 190 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/nysjoen-hochschrank-weiss-20470815/",
+     "id": "bad-nysjon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "TOFTBO Badematte",
+     "variant": "60 × 120 cm",
+     "qty": 1,
+     "price": 12.99,
+     "url": "https://www.ikea.com/de/de/p/toftbo-badematte-grauweiss-meliert-40610363/",
+     "id": "bad-toftbo"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LUDDHAGTORN Duschvorhang",
+     "variant": "grau · 180 × 200 cm",
+     "qty": 1,
+     "price": 5.99,
+     "url": "https://www.ikea.com/de/de/p/luddhagtorn-duschvorhang-grau-30613692/",
+     "id": "bad-luddhagtorn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BORRBY Laterne",
+     "variant": "schwarz · 28 cm",
+     "qty": 2,
+     "price": 7.99,
+     "url": "https://www.ikea.com/de/de/p/borrby-laterne-fuer-blockkerze-drinnen-draussen-schwarz-10156109/",
+     "id": "bad-borrby"
+    }
+   ]
+  },
+  {
+   "id": "flur",
+   "items": [
+    {
+     "id": "flur-otto-paneel",
+     "shop": "OTTO",
+     "name": "BENEDO Akustikpaneel Holzlamellen (Eingang)",
+     "variant": "Nussbaum-Optik · 240 × 60 cm",
+     "qty": 1,
+     "price": 99,
+     "url": "https://www.otto.de/p/benedo-moebel-wandpaneel-akustikpaneele-nussbaum-eichenholz-optik-240-60x2-2-cm-S0NBV0PZ/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ Schrankkombination für Wandmontage",
+     "variant": "schwarzbraun / Nussbaumnachbildung · 180 × 42 × 65 cm",
+     "qty": 1,
+     "price": 240,
+     "url": "https://www.ikea.com/de/de/p/besta-schrankkombination-fuer-wandmontage-schwarzbraun-lappviken-braun-nussbaumnachbildung-s89612266/",
+     "id": "flur-besta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "HOVET Spiegel",
+     "variant": "schwarz · 78 × 196 cm",
+     "qty": 1,
+     "price": 119,
+     "url": "https://www.ikea.com/de/de/p/hovet-spiegel-schwarz-70515915/",
+     "id": "flur-hovet"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANDARED Pouf",
+     "variant": "beige · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/sandared-pouf-beige-00385314/",
+     "id": "flur-sandared"
+    },
+    {
+     "shop": "IKEA",
+     "name": "HÖVOLM Leiste mit 6 Knöpfen (Garderobe)",
+     "variant": "Eiche",
+     "qty": 1,
+     "price": 14.99,
+     "url": "https://www.ikea.com/de/de/p/hoevolm-leiste-mit-6-knoepfen-eiche-10500059/",
+     "id": "flur-hovolm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LOHALS Läufer",
+     "variant": "natur · 80 × 250 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/lohals-laeufer-flach-gewebt-natur-50515105/",
+     "id": "flur-lohals"
+    },
+    {
+     "shop": "IKEA",
+     "name": "RÖDALM Bilderrahmen",
+     "variant": "schwarz · 50 × 70 cm",
+     "qty": 2,
+     "price": 15.99,
+     "url": "https://www.ikea.com/de/de/p/roedalm-rahmen-schwarz-70548925/",
+     "id": "flur-rodalm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenspot, 3 Spots",
+     "variant": "anthrazit",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenspot-3-spots-anthrazit-90415081/",
+     "id": "flur-nymane"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ORMANÄS LED-Lichtleiste (unter dem Sideboard)",
+     "variant": "4 m, dimmbar",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/ormanaes-lichtleiste-led-smart-kabellos-dimmbar-farb-und-weissspektrum-40497395/",
+     "id": "flur-ormanas"
+    }
+   ]
+  },
+  {
+   "id": "kueche",
+   "items": [
+    {
+     "shop": "IKEA",
+     "name": "SANDSBERG Tisch",
+     "variant": "schwarz · 110 × 67 cm",
+     "qty": 1,
+     "price": 49,
+     "url": "https://www.ikea.com/de/de/p/sandsberg-tisch-schwarz-s29420393/",
+     "id": "kueche-sandsberg"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NORDMANSSKÄR Stuhl",
+     "variant": "schwarz / Tonerud grau",
+     "qty": 2,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nordmansskaer-stuhl-schwarz-tonerud-grau-s99618215/",
+     "id": "kueche-nordmansskar"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "kueche-solklint"
+    }
+   ]
+  }
+ ],
+ "extra": [
+  {
+   "name": "Lieferung IKEA (Speditionsware, ca.)",
+   "price": 79
+  },
+  {
+   "name": "Lieferung POCO (Spedition bis 1.000 € Warenwert)",
+   "price": 155
+  },
+  {
+   "name": "Lieferung Kabs (ca.)",
+   "price": 99
+  },
+  {
+   "name": "Versand OTTO (ca.)",
+   "price": 39.95
+  },
+  {
+   "name": "Versand MediaMarkt Trockner (ca.)",
+   "price": 39.9
+  },
+  {
+   "name": "Versand Saturn Waschmaschine (ca.)",
+   "price": 39.9
+  }
+ ],
+ "budget": 9000
+}]).then(([a,b])=>{PLANS['5000']=a;PLANS['9000']=b;
+  let p='5000';try{const s=localStorage.getItem('wohnung-plan');if(s==='9000')p=s;}catch(e){}applyPlan(p);})
+  .catch(()=>{document.getElementById('dList').textContent='Die Einkaufsliste konnte nicht geladen werden.';});
+
+// labels (top view)
+const labelsEl=document.getElementById('labels');const LBL={};
+for(const id of ORDER){const R=ROOMS[id];const d=document.createElement('div');d.className='lbl glass';d.innerHTML=`<b>${R.name}</b><span>${R.area} m²</span>`;d.hidden=true;d.addEventListener('click',()=>goRoom(id));labelsEl.appendChild(d);LBL[id]=d;}
+const tmpV=new THREE.Vector3();
+function updateLabels(){const show=st.mode==='top'&&!tween;for(const id of ORDER){const d=LBL[id];if(!show){d.hidden=true;continue;}const R=ROOMS[id];
+  tmpV.set((R.x0+R.x1)/2,.3,(R.z0+R.z1)/2).project(camera);if(tmpV.z>1){d.hidden=true;continue;}d.hidden=false;
+  d.style.transform=`translate(${(tmpV.x*.5+.5)*innerWidth}px,${(-tmpV.y*.5+.5)*innerHeight}px) translate(-50%,-50%)`;}}
+// minimap
+const map=document.getElementById('map'),mctx=map.getContext('2d');const MB={x0:-.4,x1:10.95,z0:-4.1,z1:5.9};
+function mapScale(){const w=map.clientWidth,h=map.clientHeight,s=Math.min((w-12)/(MB.x1-MB.x0),(h-12)/(MB.z1-MB.z0));return {s,ox:(w-s*(MB.x1-MB.x0))/2,oy:(h-s*(MB.z1-MB.z0))/2,w,h};}
+function drawMap(){const dpr=Math.min(devicePixelRatio||1,2),{s,ox,oy,w,h}=mapScale();if(map.width!==Math.round(w*dpr)){map.width=Math.round(w*dpr);map.height=Math.round(h*dpr);}
+  mctx.setTransform(dpr,0,0,dpr,0,0);mctx.clearRect(0,0,w,h);const X=x=>ox+(x-MB.x0)*s,Z=z=>oy+(z-MB.z0)*s;
+  const rect=(x0,x1,z0,z1,fill,stroke)=>{mctx.fillStyle=fill;mctx.fillRect(X(x0),Z(z0),(x1-x0)*s,(z1-z0)*s);if(stroke){mctx.strokeStyle=stroke;mctx.lineWidth=1;mctx.strokeRect(X(x0)+.5,Z(z0)+.5,(x1-x0)*s-1,(z1-z0)*s-1);}};
+  for(const id of ORDER){const R=ROOMS[id],on=id===st.room;rect(R.x0,R.x1,R.z0,R.z1,on?'rgba(227,170,99,.32)':'rgba(243,236,226,.08)',on?'rgba(227,170,99,.9)':'rgba(243,236,226,.28)');}
+  rect(NICHE.x0,NICHE.x1,NICHE.z0,NICHE.z1,st.room==='wohn'?'rgba(227,170,99,.32)':'rgba(243,236,226,.08)');
+  if(w>140){mctx.fillStyle='rgba(243,236,226,.6)';mctx.font='500 9px Inter,system-ui,sans-serif';mctx.textAlign='center';mctx.textBaseline='middle';
+    for(const id of ORDER){if(id==='flur')continue;const R=ROOMS[id];mctx.fillText(R.name.replace('zimmer','.'),X((R.x0+R.x1)/2),Z((R.z0+R.z1)/2));}}
+  const p=st.mode==='walk'?st.pos:st.tgt,px=X(p.x),pz=Z(p.z);
+  if(st.mode==='walk'){const a=Math.atan2(-Math.cos(st.yaw),-Math.sin(st.yaw));mctx.fillStyle='rgba(227,170,99,.35)';mctx.beginPath();mctx.moveTo(px,pz);mctx.arc(px,pz,22,a-.6,a+.6);mctx.closePath();mctx.fill();}
+  mctx.fillStyle='#e3aa63';mctx.beginPath();mctx.arc(px,pz,3.6,0,7);mctx.fill();mctx.strokeStyle='#110f0d';mctx.lineWidth=1.5;mctx.stroke();}
+map.addEventListener('click',e=>{const r=map.getBoundingClientRect(),{s,ox,oy}=mapScale(),x=MB.x0+(e.clientX-r.left-ox)/s,z=MB.z0+(e.clientY-r.top-oy)/s;hideHint();
+  if(st.mode==='top'){const id=roomAt(x,z);if(id)goRoom(id);return;}
+  if(walkable(x,z))fadeTo(()=>{st.pos.set(x,EYE,z);tween=null;applyPose(walkPose());setRoom(roomAt(x,z));});else{const id=roomAt(x,z);if(id)goRoom(id);}});
+
+/* ---------------- input ---------------- */
+const keys=new Set();
+addEventListener('keydown',e=>{if(!drawer.hidden)return;if(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))return;const k=e.key.toLowerCase();
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','q','e'].includes(k)){keys.add(k);e.preventDefault();hideHint();}});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
+const ptrs=new Map();let drag=null,pinch=null;
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1)drag={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};else if(ptrs.size===2){drag=null;const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};}canvas.classList.add('dragging');});
+canvas.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y);if(st.mode==='top'){st.radius=Math.max(3.5,Math.min(34,st.radius*pinch.d/d));tween=null;applyPose(topPose());}pinch.d=d;return;}
+  if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;drag.moved+=Math.abs(dx)+Math.abs(dy);if(drag.moved<4)return;tween=null;hideHint();
+  if(st.mode==='walk'){st.yaw+=dx*.0045;st.pitch=Math.max(-1.2,Math.min(1.2,st.pitch+dy*.0045));applyPose(walkPose());}
+  else{st.theta-=dx*.006;st.phi=Math.max(.12,Math.min(1.22,st.phi-dy*.005));applyPose(topPose());}});
+function endPtr(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+  if(drag&&ptrs.size===0){if(drag.moved<8&&performance.now()-drag.t<500)tap(e.clientX,e.clientY);drag=null;}if(ptrs.size===0)canvas.classList.remove('dragging');}
+canvas.addEventListener('pointerup',endPtr);canvas.addEventListener('pointercancel',endPtr);
+canvas.addEventListener('wheel',e=>{e.preventDefault();hideHint();tween=null;
+  if(st.mode==='top'){st.radius=Math.max(3.5,Math.min(34,st.radius*Math.exp(e.deltaY*.0012)));applyPose(topPose());}
+  else{const s=-Math.sign(e.deltaY)*.35;tryMove(-Math.sin(st.yaw)*s,-Math.cos(st.yaw)*s);applyPose(walkPose());}},{passive:false});
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+const marker=new THREE.Mesh(new THREE.RingGeometry(.13,.17,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:'#e3aa63',transparent:true,opacity:0,depthWrite:false}));
+marker.position.y=.02;marker.raycast=noPick;marker.userData.fx=true;scene.add(marker);let markerT=0;
+function visibleChain(o){while(o){if(!o.visible)return false;o=o.parent;}return true;}
+function pidOf(o){while(o){if(o.userData&&o.userData.pid)return o.userData.pid;o=o.parent;}return null;}
+function tap(cx,cy){ndc.set(cx/innerWidth*2-1,-(cy/innerHeight)*2+1);ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects(scene.children,true).filter(h=>visibleChain(h.object)&&!(st.mode==='top'&&h.point.y>1.55));if(!hits.length)return;const h0=hits[0],p=h0.point;
+  const pid=pidOf(h0.object);if(pid&&PROD[pid]&&!h0.object.userData.floor){showPop(pid);return;}hidePop();
+  if(st.mode==='top'){const id=roomAt(p.x,p.z);if(id)goRoom(id);return;}
+  let x=p.x,z=p.z;if(!walkable(x,z)){const dx=x-st.pos.x,dz=z-st.pos.z,L=Math.hypot(dx,dz);let ok=false;
+    for(let t=L-.2;t>.3;t-=.1){const xx=st.pos.x+dx/L*t,zz=st.pos.z+dz/L*t;if(walkable(xx,zz)){x=xx;z=zz;ok=true;break;}}if(!ok)return;}
+  marker.position.x=x;marker.position.z=z;markerT=performance.now();
+  let clear=true;const L=Math.hypot(x-st.pos.x,z-st.pos.z);for(let t=0;t<=1;t+=.1/Math.max(L,.1))if(!walkable(st.pos.x+(x-st.pos.x)*t,st.pos.z+(z-st.pos.z)*t)){clear=false;break;}
+  if(clear){st.pos.set(x,EYE,z);tweenTo(walkPose(),Math.min(1400,300+L*380));}else fadeTo(()=>{st.pos.set(x,EYE,z);tween=null;applyPose(walkPose());});setRoom(roomAt(x,z));}
+function tryMove(dx,dz){const nx=st.pos.x+dx,nz=st.pos.z+dz;if(walkable(nx,nz)){st.pos.x=nx;st.pos.z=nz;}else if(walkable(nx,st.pos.z))st.pos.x=nx;else if(walkable(st.pos.x,nz))st.pos.z=nz;}
+
+/* ---------------- loop ---------------- */
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;setFov();if(composer){composer.setSize(innerWidth,innerHeight);}if(!tween)applyPose(st.mode==='walk'?walkPose():topPose());}
+addEventListener('resize',resize);
+let last=performance.now(),frame=0;
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;frame++;
+  if(st.mode==='walk'&&keys.size){tween=null;const sp=1.7*dt,f=(keys.has('w')||keys.has('arrowup')?1:0)-(keys.has('s')||keys.has('arrowdown')?1:0),sd=(keys.has('d')?1:0)-(keys.has('a')?1:0),turn=(keys.has('arrowleft')||keys.has('q')?1:0)-(keys.has('arrowright')||keys.has('e')?1:0);
+    st.yaw+=turn*1.8*dt;const fx=-Math.sin(st.yaw),fz=-Math.cos(st.yaw),rx=Math.cos(st.yaw),rz=-Math.sin(st.yaw);if(f||sd)tryMove((fx*f+rx*sd)*sp,(fz*f+rz*sd)*sp);applyPose(walkPose());const r=roomAt(st.pos.x,st.pos.z);if(r)setRoom(r);}
+  if(tween){const k=Math.min(1,(now-tween.t0)/tween.dur),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;camera.position.lerpVectors(tween.p0,tween.P.p,e);camera.quaternion.copy(tween.q0).slerp(tween.P.q,e);if(k>=1){const d=tween.done;tween=null;d&&d();}}
+  if(markerT){const a=(now-markerT)/900;marker.material.opacity=a<1?.9*(1-a):0;if(a>=1)markerT=0;}
+  updateLabels();if(frame%3===0)drawMap();
+  if(composer)composer.render();else renderer.render(scene,camera);requestAnimationFrame(loop);}
+const hashMap={};for(const id of ORDER)hashMap[ROOMS[id].key]=id;
+function fromHash(){const h=(location.hash||'').slice(1);if(h==='von-oben'){setMode('top');return;}const id=hashMap[h];if(id){const v=ROOMS[id].view;st.pos.set(v.x,EYE,v.z);st.yaw=lookAtYaw(v);if(st.mode==='walk')applyPose(walkPose());setRoom(id,true);}}
+addEventListener('hashchange',fromHash);
+st.yaw=lookAtYaw(ROOMS.wohn.view);setMood('eve');resize();fromHash();applyPose(st.mode==='walk'?walkPose():topPose());updateCard();
+document.getElementById('loading').remove();requestAnimationFrame(loop);
+</script>
+
+</html>
