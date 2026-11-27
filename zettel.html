@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Einkaufszettel &amp; Einzugsplan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column for a phone held in a store aisle; sticky tab bar + progress; big tap targets. */
+:root{
+  --bg:#13110f;--card:#1c1916;--card2:#24201c;--fg:#f3ece2;--muted:#ab9f91;--accent:#e3aa63;--ok:#8fbf8a;--line:rgba(243,236,226,.12);
+  --display:'Sora',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--body:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px)}
+header.top{padding-top:calc(env(safe-area-inset-top,0px) + 18px);padding-bottom:6px;display:flex;flex-direction:column;gap:6px}
+h1{font:600 22px/1.2 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin:0}
+.sub a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+.tabs{display:flex;background:var(--card);border-radius:999px;padding:3px;gap:2px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:600 14px var(--body);padding:9px 10px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.prog{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.prog b{color:var(--fg)}
+.meter{height:6px;background:rgba(243,236,226,.1);border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#f0c48a);border-radius:99px;transition:width .3s}
+section.shop{margin-top:22px}
+.shop-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.shop-head h2{font:600 17px var(--display);margin:0}
+.shop-head span{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hint{margin:4px 0 10px;color:var(--muted);font-size:13px}
+.hint.warn{color:#f2b36f}
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;padding:12px 13px;align-items:start}
+.item input{appearance:none;-webkit-appearance:none;width:24px;height:24px;border-radius:7px;border:2px solid rgba(243,236,226,.35);margin:1px 0 0;cursor:pointer;display:grid;place-items:center;background:transparent}
+.item input:checked{background:var(--ok);border-color:var(--ok)}
+.item input:checked::after{content:"";width:7px;height:12px;border:solid #13110f;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.item input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.item label{min-width:0;cursor:pointer}
+.item .n{font-weight:500}
+.item .v{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.item .meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:6px;font-size:12px;color:var(--muted)}
+.item .nr{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--fg);background:var(--card2);padding:1px 7px;border-radius:5px;letter-spacing:.02em}
+.item .room{color:var(--muted)}
+.item a{color:var(--accent);text-decoration:none}
+.item .p{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.item .p small{display:block;color:var(--muted);font-size:11.5px}
+.item.done{opacity:.5}
+.item.done .n{text-decoration:line-through}
+.total{margin-top:26px;background:var(--card);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;font-variant-numeric:tabular-nums;font-size:14px}
+.total div{display:flex;justify-content:space-between;gap:10px}
+.total .big{font:600 18px var(--body)}
+.total .ok{color:var(--ok)}
+/* plan tab */
+.phase{margin-top:22px;border-left:3px solid var(--accent);padding-left:14px}
+.phase .when{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.phase h2{font:600 17px var(--display);margin:2px 0 6px}
+.phase ol,.phase ul{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.phase li{padding-left:2px}
+.phase p{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.chip.done{border-color:var(--ok);color:var(--ok)}
+.rule{margin-top:22px;background:var(--card);border-radius:14px;padding:14px 16px}
+.rule h2{font:600 16px var(--display);margin:0 0 6px}
+.rule ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.reset{margin-top:22px;background:transparent;border:1px solid var(--line);color:var(--muted);font:500 13px var(--body);padding:8px 14px;border-radius:999px;cursor:pointer}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Einkaufszettel &amp; Einzugsplan</h1>
+    <p class="sub">Plan 5.000 € · Preise vom 26.11.2026 · Häkchen werden auf diesem Handy gespeichert · <a href="./">3D-Rundgang öffnen</a></p>
+  </header>
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabList" aria-selected="true" aria-controls="viewList">Einkaufszettel</button>
+      <button role="tab" id="tabPlan" aria-selected="false" aria-controls="viewPlan">Reihenfolge</button>
+    </div>
+    <div class="prog"><span><b id="pCount">0</b> von <span id="pTotal">0</span> erledigt</span><span><b id="pSum">0 €</b> im Wagen</span></div>
+    <div class="meter"><i id="pBar"></i></div>
+  </div>
+
+  <main id="viewList" role="tabpanel"></main>
+  <main id="viewPlan" role="tabpanel" hidden></main>
+</div>
+<script>
+(function(){
+const DATA={
+ "stand": "26.11.2026",
+ "budget": 5000,
+ "rooms": [
+  {
+   "id": "wohn",
+   "items": [
+    {
+     "id": "wohn-friheten",
+     "shop": "IKEA",
+     "name": "FRIHETEN Eckbettsofa mit Bettkasten",
+     "variant": "Skiftebo dunkelgrau · 230 × 151 cm",
+     "qty": 1,
+     "price": 499,
+     "url": "https://www.ikea.com/de/de/p/friheten-eckbettsofa-mit-bettkasten-skiftebo-dunkelgrau-s39216754/"
+    },
+    {
+     "id": "wohn-tcl55",
+     "shop": "MediaMarkt",
+     "name": "TCL 55C6K QLED-TV, 55 Zoll",
+     "variant": "139 cm Diagonale, 144 Hz",
+     "qty": 1,
+     "price": 549,
+     "url": "https://www.mediamarkt.de/de/product/_tcl-55c6k-fernseher-flat-55-zoll-139-cm-uhd-4k-smart-tv-155631745.html"
+    },
+    {
+     "id": "wohn-otto-paneel3",
+     "shop": "OTTO",
+     "name": "BENEDO Akustikpaneel Holzlamellen (TV-Wand)",
+     "variant": "Nussbaum-Optik · 240 × 60 cm, 3 Stück = 1,80 m hinter dem TV",
+     "qty": 3,
+     "price": 99,
+     "url": "https://www.otto.de/p/benedo-moebel-wandpaneel-akustikpaneele-nussbaum-eichenholz-optik-240-60x2-2-cm-S0NBV0PZ/"
+    },
+    {
+     "id": "wohn-besta180",
+     "shop": "IKEA",
+     "name": "BESTÅ TV-Bank mit Türen",
+     "variant": "schwarzbraun / Lappviken Nussbaumnachbildung · 180 × 42 × 38 cm",
+     "qty": 1,
+     "price": 145,
+     "url": "https://www.ikea.com/de/de/p/besta-tv-bank-mit-tueren-schwarzbraun-lappviken-braun-nussbaumnachbildung-s09612171/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BESTÅ Wandschiene (zum Aufhängen)",
+     "variant": "60 cm",
+     "qty": 3,
+     "price": 5,
+     "url": "https://www.ikea.com/de/de/p/besta-wandschiene-silberfarben-70488318/",
+     "id": "wohn-besta-2"
+    },
+    {
+     "id": "wohn-borgebyct",
+     "shop": "IKEA",
+     "name": "BORGEBY Couchtisch",
+     "variant": "schwarz · Ø 70 cm",
+     "qty": 1,
+     "price": 129,
+     "url": "https://www.ikea.com/de/de/p/borgeby-couchtisch-schwarz-30500355/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LISABO Esstisch rund",
+     "variant": "schwarz/Eschenfurnier · Ø 105 cm",
+     "qty": 1,
+     "price": 139,
+     "url": "https://www.ikea.com/de/de/p/lisabo-tisch-schwarz-eschenfurnier-50416501/",
+     "id": "wohn-lisabo"
+    },
+    {
+     "id": "wohn-nordmansskar",
+     "shop": "IKEA",
+     "name": "NORDMANSSKÄR Stuhl",
+     "variant": "schwarz / Tonerud grau",
+     "qty": 4,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nordmansskaer-stuhl-schwarz-tonerud-grau-s99618215/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte (über dem Esstisch)",
+     "variant": "Messing / Klarglas grau",
+     "qty": 2,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "wohn-solklint2"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenleuchte LED",
+     "variant": "anthrazit · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenleuchte-led-anthrazit-30526671/",
+     "id": "wohn-nymane"
+    },
+    {
+     "id": "wohn-lokaltag",
+     "shop": "IKEA",
+     "name": "LOKALTÅG Teppich Kurzflor",
+     "variant": "beige/grau · 200 × 300 cm",
+     "qty": 1,
+     "price": 89.99,
+     "url": "https://www.ikea.com/de/de/p/lokaltag-teppich-kurzflor-beige-grau-00623230/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ORMANÄS LED-Lichtleiste (hinter TV-Bank)",
+     "variant": "4 m, dimmbar",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/ormanaes-lichtleiste-led-smart-kabellos-dimmbar-farb-und-weissspektrum-40497395/",
+     "id": "wohn-ormanas180"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FEJKA Olivenbaum, künstlich",
+     "variant": "Topf 19 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/fejka-topfpflanze-kuenstlich-drinnen-draussen-olivenbaum-gruen-40617699/",
+     "id": "wohn-fejka"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "dunkelbraun · 50 × 50 cm",
+     "qty": 2,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-dunkelbraun-90636025/",
+     "id": "wohn-sanela"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "hellbeige · 50 × 50 cm",
+     "qty": 2,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-hellbeige-50590897/",
+     "id": "wohn-sanela-2"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VALLKRASSING Plaid",
+     "variant": "elfenbeinweiß",
+     "qty": 1,
+     "price": 9.99,
+     "url": "https://www.ikea.com/de/de/p/vallkrassing-plaid-elfenbeinweiss-20570928/",
+     "id": "wohn-vallkrassing"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
+     "id": "wohn-rollo"
+    },
+    {
+     "id": "wohn-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT)",
+     "variant": "470 lm, rund klar",
+     "qty": 2,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
+    },
+    {
+     "id": "wohn-inner",
+     "shop": "IKEA",
+     "name": "INNER Innenkissen (für die SANELA-Bezüge)",
+     "variant": "weiß · 50 × 50 cm",
+     "qty": 4,
+     "price": 2,
+     "url": "https://www.ikea.com/de/de/p/inner-innenkissen-weiss-60262193/",
+     "extra": true
+    }
+   ]
+  },
+  {
+   "id": "schlaf",
+   "items": [
+    {
+     "id": "schlaf-ramnefjall",
+     "shop": "IKEA",
+     "name": "RAMNEFJÄLL Polsterbett",
+     "variant": "Klovsta grau/weiß, inkl. LURÖY-Lattenrost · 160 × 200 cm",
+     "qty": 1,
+     "price": 229,
+     "url": "https://www.ikea.com/de/de/p/ramnefjaell-bettgestell-gepolstert-klovsta-grau-weiss-luroey-s59552754/"
+    },
+    {
+     "id": "schlaf-vesteroy",
+     "shop": "IKEA",
+     "name": "VESTERÖY Taschenfederkernmatratze",
+     "variant": "mittelfest · 160 × 200 cm",
+     "qty": 1,
+     "price": 239,
+     "url": "https://www.ikea.com/de/de/p/vesteroey-taschenfederkernmatratze-mittelfest-hellblau-40450623/"
+    },
+    {
+     "id": "schlaf-radmanso",
+     "shop": "IKEA",
+     "name": "RÅDMANSÖ Kleiderschrank",
+     "variant": "braun Nussbaumnachbildung · 118 × 64 × 190 cm",
+     "qty": 1,
+     "price": 299,
+     "url": "https://www.ikea.com/de/de/p/radmansoe-kleiderschrank-braun-nussbaumnachbildung-70593606/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "STORKLINTA Kommode als Nachttisch",
+     "variant": "dunkelbraun Eichenachbildung · 40 × 50 × 53 cm",
+     "qty": 2,
+     "price": 59.99,
+     "url": "https://www.ikea.com/de/de/p/storklinta-kommode-mit-2-schubladen-dunkelbraun-eichenachbildung-60631411/",
+     "id": "schlaf-storklinta"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Tischleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 2,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-tischleuchte-messing-klarglas-grau-70464275/",
+     "id": "schlaf-solklint-tl"
+    },
+    {
+     "shop": "IKEA",
+     "name": "VINDKAST Hängeleuchte",
+     "variant": "weiß · 50 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/vindkast-haengeleuchte-weiss-20450520/",
+     "id": "schlaf-vindkast"
+    },
+    {
+     "shop": "IKEA",
+     "name": "ÄRENDE Teppich Langflor",
+     "variant": "elfenbeinweiß · 160 × 230 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/aerende-teppich-langflor-elfenbeinweiss-20576435/",
+     "id": "schlaf-arende"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SÄFFEROT Bettdecke, warm",
+     "variant": "240 × 220 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/saefferot-decke-warm-80565721/",
+     "id": "schlaf-safferot"
+    },
+    {
+     "shop": "IKEA",
+     "name": "PILSPINNARE Kopfkissen",
+     "variant": "80 × 80 cm",
+     "qty": 2,
+     "price": 16.99,
+     "url": "https://www.ikea.com/de/de/p/pilspinnare-kissen-niedrig-70587144/",
+     "id": "schlaf-pilspinnare"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BIRGITTARÖNN Bettwäsche-Set",
+     "variant": "weiß · 240 × 220 cm",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/birgittaroenn-bettwaesche-set-3-teilig-weiss-10636675/",
+     "id": "schlaf-birgittaronn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SKOGSKLÖVER Rollo",
+     "variant": "grau · 140 × 195 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
+     "id": "schlaf-rollo"
+    },
+    {
+     "id": "schlaf-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT-Tischleuchten)",
+     "variant": "470 lm, rund klar",
+     "qty": 2,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
+    },
+    {
+     "id": "schlaf-solhetta-806",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für VINDKAST)",
+     "variant": "806 lm, dimmbar, opalweiß",
+     "qty": 1,
+     "price": 4.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-806-lm-dimmbar-rund-opalweiss-60583924/",
+     "extra": true
+    }
+   ]
+  },
+  {
+   "id": "arbeit",
+   "items": [
+    {
+     "id": "arbeit-fridhult",
+     "shop": "IKEA",
+     "name": "FRIDHULT Bettsofa (für Gäste)",
+     "variant": "Knisa hellgrau · 126 × 76 cm, Liegefläche 119 × 202 cm",
+     "qty": 1,
+     "price": 199,
+     "url": "https://www.ikea.com/de/de/p/fridhult-bettsofa-knisa-hellgrau-70351725/"
+    },
+    {
+     "id": "arbeit-micke",
+     "shop": "IKEA",
+     "name": "MICKE Schreibtisch",
+     "variant": "schwarzbraun · 142 × 50 cm",
+     "qty": 1,
+     "price": 149.99,
+     "url": "https://www.ikea.com/de/de/p/micke-schreibtisch-schwarzbraun-60244745/"
+    },
+    {
+     "id": "arbeit-millberget",
+     "shop": "IKEA",
+     "name": "MILLBERGET Drehstuhl",
+     "variant": "Murum schwarz",
+     "qty": 1,
+     "price": 99.99,
+     "url": "https://www.ikea.com/de/de/p/millberget-drehstuhl-murum-schwarz-70489394/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "FORSÅ Arbeitsleuchte",
+     "variant": "schwarz",
+     "qty": 1,
+     "price": 19.99,
+     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-schwarz-00146776/",
+     "id": "arbeit-forsa"
+    },
+    {
+     "id": "arbeit-solhetta-e14",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E14 (für FORSÅ)",
+     "variant": "250 lm, opalweiß",
+     "qty": 1,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e14-250-lm-rund-opalweiss-00583984/",
+     "extra": true
+    }
+   ]
+  },
+  {
+   "id": "bad",
+   "items": [
+    {
+     "shop": "Saturn",
+     "name": "BOSCH WAN282ECO5 Waschmaschine Serie 4",
+     "variant": "8 kg, 1400 U/min, A",
+     "qty": 1,
+     "price": 444,
+     "url": "https://www.saturn.de/de/product/_bosch-wan282eco5-serie-4-waschmaschine-8-kg-1400-umin-a-2891780.html",
+     "id": "bad-bosch"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYSJÖN Hochschrank (neben den Geräten)",
+     "variant": "weiß · 30 × 190 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/nysjoen-hochschrank-weiss-20470815/",
+     "id": "bad-nysjon"
+    },
+    {
+     "shop": "IKEA",
+     "name": "TOFTBO Badematte",
+     "variant": "60 × 120 cm",
+     "qty": 1,
+     "price": 12.99,
+     "url": "https://www.ikea.com/de/de/p/toftbo-badematte-grauweiss-meliert-40610363/",
+     "id": "bad-toftbo"
+    },
+    {
+     "shop": "IKEA",
+     "name": "LUDDHAGTORN Duschvorhang",
+     "variant": "grau · 180 × 200 cm",
+     "qty": 1,
+     "price": 5.99,
+     "url": "https://www.ikea.com/de/de/p/luddhagtorn-duschvorhang-grau-30613692/",
+     "id": "bad-luddhagtorn"
+    },
+    {
+     "shop": "IKEA",
+     "name": "BORRBY Laterne",
+     "variant": "schwarz · 28 cm",
+     "qty": 2,
+     "price": 7.99,
+     "url": "https://www.ikea.com/de/de/p/borrby-laterne-fuer-blockkerze-drinnen-draussen-schwarz-10156109/",
+     "id": "bad-borrby"
+    }
+   ]
+  },
+  {
+   "id": "flur",
+   "items": [
+    {
+     "id": "flur-nissedal",
+     "shop": "IKEA",
+     "name": "NISSEDAL Spiegel",
+     "variant": "schwarz · 65 × 150 cm",
+     "qty": 1,
+     "price": 49.99,
+     "url": "https://www.ikea.com/de/de/p/nissedal-spiegel-schwarz-70320319/"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANDARED Pouf",
+     "variant": "beige · 45 cm",
+     "qty": 1,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/sandared-pouf-beige-00385314/",
+     "id": "flur-sandared"
+    },
+    {
+     "shop": "IKEA",
+     "name": "HÖVOLM Leiste mit 6 Knöpfen (Garderobe)",
+     "variant": "Eiche",
+     "qty": 1,
+     "price": 14.99,
+     "url": "https://www.ikea.com/de/de/p/hoevolm-leiste-mit-6-knoepfen-eiche-10500059/",
+     "id": "flur-hovolm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "RÖDALM Bilderrahmen",
+     "variant": "schwarz · 50 × 70 cm",
+     "qty": 2,
+     "price": 15.99,
+     "url": "https://www.ikea.com/de/de/p/roedalm-rahmen-schwarz-70548925/",
+     "id": "flur-rodalm"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NYMÅNE Deckenspot, 3 Spots",
+     "variant": "anthrazit",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/nymane-deckenspot-3-spots-anthrazit-90415081/",
+     "id": "flur-nymane"
+    },
+    {
+     "id": "flur-solhetta-gu10",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel GU10 (für NYMÅNE-Spots)",
+     "variant": "230 lm",
+     "qty": 3,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-gu10-230-lm-40584081/",
+     "extra": true
+    }
+   ]
+  },
+  {
+   "id": "kueche",
+   "items": [
+    {
+     "shop": "IKEA",
+     "name": "SANDSBERG Tisch",
+     "variant": "schwarz · 110 × 67 cm",
+     "qty": 1,
+     "price": 49,
+     "url": "https://www.ikea.com/de/de/p/sandsberg-tisch-schwarz-s29420393/",
+     "id": "kueche-sandsberg"
+    },
+    {
+     "shop": "IKEA",
+     "name": "NORDMANSSKÄR Stuhl",
+     "variant": "schwarz / Tonerud grau",
+     "qty": 2,
+     "price": 39.99,
+     "url": "https://www.ikea.com/de/de/p/nordmansskaer-stuhl-schwarz-tonerud-grau-s99618215/",
+     "id": "kueche-nordmansskar"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SOLKLINT Hängeleuchte",
+     "variant": "Messing / Klarglas grau",
+     "qty": 1,
+     "price": 29.99,
+     "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
+     "id": "kueche-solklint"
+    },
+    {
+     "id": "kueche-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT)",
+     "variant": "470 lm, rund klar",
+     "qty": 1,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
+    }
+   ]
+  }
+ ],
+ "extra": [
+  {
+   "name": "Lieferung IKEA (Speditionsware, ca.)",
+   "price": 79
+  },
+  {
+   "name": "Versand OTTO (ca.)",
+   "price": 39.95
+  },
+  {
+   "name": "Versand Saturn Waschmaschine (ca.)",
+   "price": 39.9
+  }
+ ]
+};
+const ROOM={wohn:'Wohnzimmer',schlaf:'Schlafzimmer',arbeit:'Arbeitszimmer',bad:'Bad',kueche:'Küche',flur:'Flur'};
+const items=DATA.rooms.flatMap(r=>r.items.map(i=>Object.assign({room:r.id},i)));
+// extra things that are not in any shop list
+items.push(
+  {id:'x-duebel',shop:'Baumarkt',name:'Hohlraumdübel für Gipskarton-Wände',variant:'für TV-Bank, Paneele, Spiegel, Bilder – vorher an die Wand klopfen',qty:1,price:0,room:'wohn'},
+  {id:'x-wago',shop:'Baumarkt',name:'Verbindungsklemmen (z. B. WAGO) für die Deckenlampen',variant:'falls an der Decke nur Kabel hängen',qty:1,price:0,room:'flur'},
+  {id:'x-werkzeug',shop:'Baumarkt',name:'Akkuschrauber mit Bits, Wasserwaage, Cutter',variant:'leihen reicht oft (Nachbarn, Familie)',qty:1,price:0,room:'flur'},
+  {id:'x-muell',shop:'Baumarkt',name:'Große Müllsäcke + Klebeband',variant:'für Karton und Verpackung',qty:1,price:0,room:'flur'});
+const MARKT=new Set(['wohn-solklint2','wohn-nymane','wohn-lokaltag','wohn-ormanas180','wohn-fejka','wohn-sanela','wohn-sanela-2','wohn-vallkrassing','wohn-rollo','wohn-solhetta-klar','wohn-inner',
+  'schlaf-solklint-tl','schlaf-vindkast','schlaf-arende','schlaf-safferot','schlaf-pilspinnare','schlaf-birgittaronn','schlaf-rollo','schlaf-solhetta-klar','schlaf-solhetta-806',
+  'arbeit-forsa','arbeit-solhetta-e14','bad-toftbo','bad-luddhagtorn','bad-borrby','flur-sandared','flur-hovolm','flur-rodalm','flur-nymane','flur-solhetta-gu10','kueche-solklint','kueche-solhetta-klar']);
+const SECTIONS=[
+  {title:'IKEA · Markthalle',hint:'Kleinkram, den ihr unterwegs selbst aus den Regalen nehmt: Lampen, Birnen, Textilien, Teppiche, Pflanzen, Deko.',f:i=>i.shop==='IKEA'&&MARKT.has(i.id)},
+  {title:'IKEA · SB-Lager & Möbelausgabe',hint:'Regal und Fach für eure Filiale zeigt die IKEA-App (Artikelnummer eintippen). Sofa und Matratze kommen meist aus der Möbelausgabe – große Teile am besten liefern lassen.',f:i=>i.shop==='IKEA'&&!MARKT.has(i.id)},
+  {title:'MediaMarkt',hint:'Preis vor Ort mit der App vergleichen – online stand 549 € und auf einer Übersicht 299 €.',f:i=>i.shop==='MediaMarkt'},
+  {title:'Saturn',hint:'Gleiche Firma wie MediaMarkt – wenn einer günstiger ist, beim anderen nachfragen.',f:i=>i.shop==='Saturn'},
+  {title:'OTTO · nur online',hint:'Lieferzeit ca. 3 Wochen – am besten heute schon bestellen.',warn:true,f:i=>i.shop==='OTTO'},
+  {title:'Noch besorgen',hint:'Nicht im Budget, aber fürs Aufbauen nötig.',f:i=>i.shop==='Baumarkt'}];
+const PHASES=[
+  {when:'Vorher · heute',title:'Messen & Bestellen',steps:['Raumhöhen und Beginn der Dachschrägen messen (Schrank 1,90 m, Paneele 2,40 m hoch).','Küche, Fensterbreiten, Badtür und Treppenhaus messen, Fotos machen.','Internet bestellen – das dauert oft 2–4 Wochen.','OTTO-Paneele online bestellen (3 Wochen Lieferzeit).'],ids:['wohn-otto-paneel3']},
+  {when:'Einzugstag · leere Wohnung',title:'Erst die Hülle, dann die Möbel',steps:['Zählerstände (Strom, Wasser, Heizung) fotografieren, Mängel fotografieren.','Alles bohren und anschrauben, solange die Räume leer sind: Deckenlampen, Rollos, Paneel-Wand, Garderobe.','Einmal Boden putzen, dann erst Teppiche und Möbel rein.'],ids:['x-duebel','x-wago','x-werkzeug','x-muell']},
+  {when:'Tag 1 · Überleben',title:'Schlafen, Licht, Bad',steps:['Bett aufbauen, Matratze, Bettdecke, Kissen, Bettwäsche – die erste Nacht muss klappen.','Licht in Flur, Bad und Schlafzimmer (Birnen nicht vergessen).','Rollo im Schlafzimmer, Duschvorhang und Badematte.'],
+    ids:['schlaf-ramnefjall','schlaf-vesteroy','schlaf-safferot','schlaf-pilspinnare','schlaf-birgittaronn','schlaf-rollo','schlaf-vindkast','schlaf-solhetta-806','flur-nymane','flur-solhetta-gu10','bad-luddhagtorn','bad-toftbo','kueche-solklint','kueche-solhetta-klar','wohn-nymane']},
+  {when:'Woche 1 · Alltag',title:'Kleidung, Wäsche, Arbeiten',steps:['Kleiderschrank aufbauen – liegend zusammenbauen und dann aufstellen. Dafür braucht ihr etwas mehr Höhe als 1,90 m, also nicht unter der Schräge.','Nachttische und Nachttischlampen.','Waschmaschine anschließen (Wasserhahn und Ablauf im Bad).','Schreibtisch und Stuhl, damit du arbeiten und schneiden kannst.','Garderobe im Flur, Küchentisch mit Stühlen.'],
+    ids:['schlaf-radmanso','schlaf-storklinta','schlaf-solklint-tl','schlaf-solhetta-klar','bad-bosch','bad-nysjon','arbeit-micke','arbeit-millberget','arbeit-forsa','arbeit-solhetta-e14','flur-hovolm','kueche-sandsberg','kueche-nordmansskar']},
+  {when:'Woche 2–3 · Wohnzimmer',title:'Großes Zimmer, großer Effekt',steps:['Wenn die Paneele da sind: Paneel-Wand zuerst, dann TV-Bank darunter aufhängen, dann der Fernseher.','Teppich hinlegen, bevor Sofa und Couchtisch draufkommen.','Sofa, Couchtisch, Esstisch mit Stühlen, Pendelleuchten.','Gästesofa im Arbeitszimmer, Teppich im Schlafzimmer.'],
+    ids:['wohn-otto-paneel3','wohn-besta180','wohn-besta-2','wohn-tcl55','wohn-lokaltag','wohn-friheten','wohn-borgebyct','wohn-lisabo','wohn-nordmansskar','wohn-solklint2','wohn-solhetta-klar','arbeit-fridhult','schlaf-arende']},
+  {when:'Zum Schluss · Gemütlich machen',title:'Licht, Textilien, Deko',steps:['LED-Leiste hinter der TV-Bank, Kissen, Decke, Pflanzen.','Flur zuletzt: Spiegel, Hocker, Bilder – solange noch getragen wird, bleibt der Flur frei.'],
+    ids:['wohn-ormanas180','wohn-sanela','wohn-sanela-2','wohn-inner','wohn-vallkrassing','wohn-fejka','wohn-rollo','flur-nissedal','flur-sandared','flur-rodalm','bad-borrby']}];
+const KEY='zettel-5000-v1';let done=new Set();try{done=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify([...done]));}catch(e){}};
+const eur=v=>v.toLocaleString('de-DE',{minimumFractionDigits:v%1?2:0,maximumFractionDigits:2})+' €';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const artNr=u=>{const m=(u||'').match(/-s?(\d{8})\/?$/);return m?m[1].replace(/(\d{3})(\d{3})(\d{2})/,'$1.$2.$3'):'';};
+const byId=Object.fromEntries(items.map(i=>[i.id,i]));
+function render(){
+  const L=document.getElementById('viewList');let h='';let grand=0;
+  for(const s of SECTIONS){const list=items.filter(s.f);if(!list.length)continue;const sum=list.reduce((a,i)=>a+i.qty*i.price,0);grand+=sum;
+    h+=`<section class="shop"><div class="shop-head"><h2>${s.title}</h2><span>${sum?eur(Math.round(sum*100)/100):''}</span></div><p class="hint${s.warn?' warn':''}">${s.hint}</p><ul class="items">`;
+    for(const i of list){const nr=i.shop==='IKEA'?artNr(i.url):'';const d=done.has(i.id);
+      h+=`<li class="item${d?' done':''}"><input type="checkbox" id="c-${i.id}" data-id="${i.id}"${d?' checked':''} aria-label="${esc(i.name)} erledigt">
+        <label for="c-${i.id}"><span class="n">${i.qty>1?i.qty+' × ':''}${esc(i.name)}</span><span class="v">${esc(i.variant)}</span>
+        <span class="meta">${nr?`<span class="nr">${nr}</span>`:''}<span class="room">${ROOM[i.room]||''}</span>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener">ansehen ↗</a>`:''}</span></label>
+        <span class="p">${i.price?eur(Math.round(i.qty*i.price*100)/100):''}${i.qty>1&&i.price?`<small>${i.qty} × ${eur(i.price)}</small>`:''}</span></li>`;}
+    h+='</ul></section>';}
+  const ship=DATA.extra.reduce((a,e)=>a+e.price,0);
+  h+=`<div class="total"><div><span>Produkte</span><span>${eur(Math.round(grand*100)/100)}</span></div>${DATA.extra.map(e=>`<div><span>${esc(e.name)}</span><span>${eur(e.price)}</span></div>`).join('')}
+    <div class="big"><span>Gesamt</span><span>${eur(Math.round((grand+ship)*100)/100)}</span></div><div class="ok"><span>Noch frei bis ${eur(DATA.budget||5000)}</span><span>${eur(Math.round(((DATA.budget||5000)-grand-ship)*100)/100)}</span></div></div>
+    <button class="reset" id="reset">Alle Häkchen entfernen</button>`;
+  L.innerHTML=h;
+  const P=document.getElementById('viewPlan');let p=`<div class="rule"><h2>Die Grundregel in jedem Zimmer</h2><ol><li>Wände und Decke: bohren, Lampen, Rollos, Paneele</li><li>Boden: putzen, dann Teppich</li><li>Große Möbel: Bett, Schrank, Sofa</li><li>Kleine Möbel</li><li>Licht und Technik: Kabel, LED, Fernseher</li><li>Textilien und Deko</li></ol>
+    <p class="hint" style="margin-top:8px">Zimmer-Reihenfolge: Schlafzimmer → Bad → Küche → Arbeitszimmer → Wohnzimmer → Flur. Der Flur kommt zuletzt, weil dort alles durchgetragen wird.</p></div>`;
+  for(const ph of PHASES){p+=`<section class="phase"><div class="when">${ph.when}</div><h2>${ph.title}</h2><ol>${ph.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
+    <div class="chips">${ph.ids.map(id=>byId[id]).filter(Boolean).map(i=>`<span class="chip${done.has(i.id)?' done':''}">${done.has(i.id)?'✓ ':''}${esc(i.name.split(/ \(| – /)[0])}</span>`).join('')}</div></section>`;}
+  P.innerHTML=p;
+  const tot=items.length,cnt=items.filter(i=>done.has(i.id)).length,cart=items.filter(i=>done.has(i.id)).reduce((a,i)=>a+i.qty*i.price,0);
+  document.getElementById('pCount').textContent=cnt;document.getElementById('pTotal').textContent=tot;document.getElementById('pSum').textContent=eur(Math.round(cart*100)/100);
+  document.getElementById('pBar').style.width=(cnt/tot*100)+'%';}
+document.addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.id;if(!id)return;if(e.target.checked)done.add(id);else done.delete(id);save();
+  const li=e.target.closest('.item');if(li)li.classList.toggle('done',e.target.checked);render();});
+document.addEventListener('click',e=>{if(e.target.id==='reset'){const b=e.target;if(b.dataset.sure){done.clear();save();render();}else{b.dataset.sure='1';b.textContent='Wirklich alle entfernen? Nochmal tippen';}}});
+const tL=document.getElementById('tabList'),tP=document.getElementById('tabPlan');
+function tab(plan){tL.setAttribute('aria-selected',String(!plan));tP.setAttribute('aria-selected',String(plan));document.getElementById('viewList').hidden=plan;document.getElementById('viewPlan').hidden=!plan;
+  try{history.replaceState(null,'',plan?'#reihenfolge':'#zettel');}catch(e){}}
+tL.addEventListener('click',()=>tab(false));tP.addEventListener('click',()=>tab(true));
+render();if(location.hash==='#reihenfolge')tab(true);
+})();
+</script>
+</body></html>

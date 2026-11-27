@@ -174,7 +174,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 </section>
 <aside id="drawer" class="glass" hidden aria-label="Einkaufsliste">
   <header>
-    <div><h2>Einkaufsliste</h2><p class="meta" id="dMeta"></p></div>
+    <div><h2>Einkaufsliste</h2><p class="meta" style="margin:0 0 4px"><a href="zettel.html" style="color:var(--accent)">Einkaufszettel &amp; Reihenfolge zum Abhaken ↗</a></p><p class="meta" id="dMeta"></p></div>
     <button class="close" id="dClose">Schließen</button>
   </header>
   <div class="scroll" id="dList"></div>
@@ -921,11 +921,20 @@ Promise.resolve([{
     {
      "shop": "IKEA",
      "name": "SANELA Kissenbezug",
-     "variant": "dunkelbraun + hellbeige · 50 × 50 cm",
-     "qty": 4,
+     "variant": "dunkelbraun · 50 × 50 cm",
+     "qty": 2,
      "price": 6.99,
      "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-dunkelbraun-90636025/",
      "id": "wohn-sanela"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "hellbeige · 50 × 50 cm",
+     "qty": 2,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-hellbeige-50590897/",
+     "id": "wohn-sanela-2"
     },
     {
      "shop": "IKEA",
@@ -942,8 +951,28 @@ Promise.resolve([{
      "variant": "grau · 140 × 195 cm",
      "qty": 1,
      "price": 39.99,
-     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
      "id": "wohn-rollo"
+    },
+    {
+     "id": "wohn-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT)",
+     "variant": "470 lm, rund klar",
+     "qty": 2,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
+    },
+    {
+     "id": "wohn-inner",
+     "shop": "IKEA",
+     "name": "INNER Innenkissen (für die SANELA-Bezüge)",
+     "variant": "weiß · 50 × 50 cm",
+     "qty": 4,
+     "price": 2,
+     "url": "https://www.ikea.com/de/de/p/inner-innenkissen-weiss-60262193/",
+     "extra": true
     }
    ]
   },
@@ -1046,8 +1075,28 @@ Promise.resolve([{
      "variant": "grau · 140 × 195 cm",
      "qty": 1,
      "price": 39.99,
-     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
      "id": "schlaf-rollo"
+    },
+    {
+     "id": "schlaf-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT-Tischleuchten)",
+     "variant": "470 lm, rund klar",
+     "qty": 2,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
+    },
+    {
+     "id": "schlaf-solhetta-806",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für VINDKAST)",
+     "variant": "806 lm, dimmbar, opalweiß",
+     "qty": 1,
+     "price": 4.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-806-lm-dimmbar-rund-opalweiss-60583924/",
+     "extra": true
     }
    ]
   },
@@ -1087,8 +1136,18 @@ Promise.resolve([{
      "variant": "schwarz",
      "qty": 1,
      "price": 19.99,
-     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-vernickelt-80146763/",
+     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-schwarz-00146776/",
      "id": "arbeit-forsa"
+    },
+    {
+     "id": "arbeit-solhetta-e14",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E14 (für FORSÅ)",
+     "variant": "250 lm, opalweiß",
+     "qty": 1,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e14-250-lm-rund-opalweiss-00583984/",
+     "extra": true
     }
    ]
   },
@@ -1189,6 +1248,16 @@ Promise.resolve([{
      "price": 29.99,
      "url": "https://www.ikea.com/de/de/p/nymane-deckenspot-3-spots-anthrazit-90415081/",
      "id": "flur-nymane"
+    },
+    {
+     "id": "flur-solhetta-gu10",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel GU10 (für NYMÅNE-Spots)",
+     "variant": "230 lm",
+     "qty": 3,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-gu10-230-lm-40584081/",
+     "extra": true
     }
    ]
   },
@@ -1221,6 +1290,16 @@ Promise.resolve([{
      "price": 29.99,
      "url": "https://www.ikea.com/de/de/p/solklint-haengeleuchte-messing-klarglas-grau-10430778/",
      "id": "kueche-solklint"
+    },
+    {
+     "id": "kueche-solhetta-klar",
+     "shop": "IKEA",
+     "name": "SOLHETTA LED-Leuchtmittel E27 (für SOLKLINT)",
+     "variant": "470 lm, rund klar",
+     "qty": 1,
+     "price": 2.99,
+     "url": "https://www.ikea.com/de/de/p/solhetta-led-leuchtmittel-e27-470-lm-rund-klar-80591447/",
+     "extra": true
     }
    ]
   }
@@ -1392,11 +1471,20 @@ Promise.resolve([{
     {
      "shop": "IKEA",
      "name": "SANELA Kissenbezug",
-     "variant": "dunkelbraun + hellbeige · 50 × 50 cm",
-     "qty": 4,
+     "variant": "dunkelbraun · 50 × 50 cm",
+     "qty": 2,
      "price": 6.99,
      "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-dunkelbraun-90636025/",
      "id": "wohn-sanela"
+    },
+    {
+     "shop": "IKEA",
+     "name": "SANELA Kissenbezug",
+     "variant": "hellbeige · 50 × 50 cm",
+     "qty": 2,
+     "price": 6.99,
+     "url": "https://www.ikea.com/de/de/p/sanela-kissenbezug-hellbeige-50590897/",
+     "id": "wohn-sanela-2"
     },
     {
      "shop": "IKEA",
@@ -1413,7 +1501,7 @@ Promise.resolve([{
      "variant": "grau · 140 × 195 cm",
      "qty": 1,
      "price": 39.99,
-     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
      "id": "wohn-rollo"
     }
    ]
@@ -1526,7 +1614,7 @@ Promise.resolve([{
      "variant": "grau · 140 × 195 cm",
      "qty": 1,
      "price": 39.99,
-     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-gruen-80451017/",
+     "url": "https://www.ikea.com/de/de/p/skogskloever-rollo-grau-70314605/",
      "id": "schlaf-rollo"
     },
     {
@@ -1585,7 +1673,7 @@ Promise.resolve([{
      "variant": "schwarz",
      "qty": 1,
      "price": 19.99,
-     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-vernickelt-80146763/",
+     "url": "https://www.ikea.com/de/de/p/forsa-arbeitsleuchte-schwarz-00146776/",
      "id": "arbeit-forsa"
     },
     {
